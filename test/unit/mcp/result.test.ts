@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toToolResult, toolErrorResult, MAX_ARRAY_ITEMS } from '../../../src/mcp/result';
+import { toToolResult, toolErrorResult, MAX_ARRAY_ITEMS, MAX_TEXT_CHARS } from '../../../src/mcp/result';
 import { SdkError } from '../../../src/core/errors';
 
 describe('mcp/result · toToolResult', () => {
@@ -21,6 +21,21 @@ describe('mcp/result · toToolResult', () => {
     expect(parsed.truncated).toBe(true);
     expect(parsed.total).toBe(MAX_ARRAY_ITEMS + 50);
     expect(parsed.sample).toHaveLength(MAX_ARRAY_ITEMS);
+  });
+
+  it('undefined → text 为字符串 "null"(不丢 text 键)', () => {
+    const r = toToolResult(undefined);
+    expect(r.content[0].text).toBe('null');
+    expect(typeof r.content[0].text).toBe('string');
+  });
+
+  it('对象型大结果按序列化大小整体省略', () => {
+    const big = { data: 'x'.repeat(MAX_TEXT_CHARS + 100) };
+    const r = toToolResult(big);
+    const parsed = JSON.parse(r.content[0].text);
+    expect(parsed.truncated).toBe(true);
+    expect(parsed.reason).toBe('oversized');
+    expect(r._meta?.truncated).toBe(true);
   });
 });
 

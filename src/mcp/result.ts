@@ -7,6 +7,9 @@ import { isSdkError } from '../core/errors';
 /** 超过该条数的数组结果会被裁剪，避免撑爆 LLM 上下文 */
 export const MAX_ARRAY_ITEMS = 200;
 
+/** 序列化后超过该字符数的结果整体省略（兜底对象型大结果，如全历史净值、期权 T 型报价） */
+export const MAX_TEXT_CHARS = 80_000;
+
 export interface ToolResultContent {
   type: 'text';
   text: string;
@@ -31,9 +34,28 @@ function clampLarge(data: unknown): unknown {
   return data;
 }
 
-/** 正常结果 → CallToolResult */
+/** 正常结果 → CallToolResult；数组裁条数 + 序列化大小兜底 */
 export function toToolResult(data: unknown): ToolResult {
-  return { content: [{ type: 'text', text: JSON.stringify(clampLarge(data)) }] };
+  // JSON.stringify(undefined) / 函数 返回 JS undefined（非字符串）→ 兜成 'null'，保证 text 始终是 string
+  const text = JSON.stringify(clampLarge(data)) ?? 'null';
+  // 对象型大结果（顶层非数组，clampLarge 不触发）按序列化大小整体省略，避免撑爆 LLM 上下文
+  if (text.length > MAX_TEXT_CHARS) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({
+            truncated: true,
+            reason: 'oversized',
+            approxKB: Math.round(text.length / 1024),
+            note: '结果体积过大，已省略数据体；请用更小的日期 / 分页 / 范围参数，或直接用 SDK 获取完整数据',
+          }),
+        },
+      ],
+      _meta: { truncated: true, approxChars: text.length },
+    };
+  }
+  return { content: [{ type: 'text', text }] };
 }
 
 /**

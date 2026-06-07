@@ -2,7 +2,13 @@ import { describe, it, expect } from 'vitest';
 import { dispatchMessage, type DispatchContext } from '../../../src/mcp/server';
 import { listTools } from '../../../src/mcp/tools';
 import { StockSDK } from '../../../src/sdk';
-import { LATEST_PROTOCOL_VERSION, RPC_METHOD_NOT_FOUND, RPC_INVALID_PARAMS } from '../../../src/mcp/protocol';
+import {
+  LATEST_PROTOCOL_VERSION,
+  RPC_METHOD_NOT_FOUND,
+  RPC_INVALID_PARAMS,
+  RPC_INVALID_REQUEST,
+  type JsonRpcRequest,
+} from '../../../src/mcp/protocol';
 
 function makeCtx(): DispatchContext {
   const tools = listTools('full');
@@ -81,5 +87,42 @@ describe('mcp/server · dispatchMessage', () => {
   it('未知 method → METHOD_NOT_FOUND', async () => {
     const r = await dispatchMessage({ jsonrpc: '2.0', id: 6, method: 'foo/bar' }, makeCtx());
     expect(r?.error?.code).toBe(RPC_METHOD_NOT_FOUND);
+  });
+
+  it('jsonrpc 非 2.0 → INVALID_REQUEST', async () => {
+    const r = await dispatchMessage(
+      { jsonrpc: '1.0', id: 7, method: 'ping' } as unknown as JsonRpcRequest,
+      makeCtx()
+    );
+    expect(r?.error?.code).toBe(RPC_INVALID_REQUEST);
+  });
+
+  it('tools/call params 非对象(数组) → INVALID_PARAMS', async () => {
+    const r = await dispatchMessage(
+      { jsonrpc: '2.0', id: 8, method: 'tools/call', params: ['x'] } as unknown as JsonRpcRequest,
+      makeCtx()
+    );
+    expect(r?.error?.code).toBe(RPC_INVALID_PARAMS);
+  });
+
+  it('tools/call name 非 string → INVALID_PARAMS', async () => {
+    const r = await dispatchMessage(
+      { jsonrpc: '2.0', id: 9, method: 'tools/call', params: { name: 123 } } as unknown as JsonRpcRequest,
+      makeCtx()
+    );
+    expect(r?.error?.code).toBe(RPC_INVALID_PARAMS);
+  });
+
+  it('tools/call arguments 非对象 → INVALID_PARAMS', async () => {
+    const r = await dispatchMessage(
+      {
+        jsonrpc: '2.0',
+        id: 10,
+        method: 'tools/call',
+        params: { name: 'get_market_status', arguments: 'A' },
+      } as unknown as JsonRpcRequest,
+      makeCtx()
+    );
+    expect(r?.error?.code).toBe(RPC_INVALID_PARAMS);
   });
 });
