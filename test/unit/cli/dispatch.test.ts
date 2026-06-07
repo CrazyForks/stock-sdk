@@ -273,4 +273,34 @@ describe('dispatch — 别名 invoke 的 option 校验/归一', () => {
       expect.objectContaining({ period: 'weekly', indicators: { ma: { periods: [5, 10] } } })
     );
   });
+
+  it('#8 命名空间 kline withIndicators 也能传指标(不再静默丢)', async () => {
+    const fn = vi.fn().mockResolvedValue([]);
+    const sdk = { kline: { withIndicators: fn } } as unknown as StockSDK;
+    const m = findCommand(['kline', 'withIndicators', '600519'])!;
+    await dispatch(sdk, m.spec, { positional: m.rest, options: { ma: '5,10', macd: true } });
+    expect(fn).toHaveBeenCalledWith(
+      '600519',
+      expect.objectContaining({ indicators: { ma: { periods: [5, 10] }, macd: true } })
+    );
+  });
+
+  it('#7 indicators --macd=false 不启用 MACD(=false 不再误启用)', async () => {
+    const fn = vi.fn().mockResolvedValue([]);
+    const sdk = { kline: { withIndicators: fn } } as unknown as StockSDK;
+    const m = findCommand(['indicators', '600519'])!;
+    await dispatch(sdk, m.spec, { positional: m.rest, options: { macd: 'false' } });
+    const [, opts] = fn.mock.calls[0] as [string, Record<string, unknown>];
+    expect((opts.indicators as Record<string, unknown>).macd).toBeUndefined();
+  });
+
+  it('#13 call toString/constructor/valueOf/__proto__ 不命中 Object.prototype', () => {
+    const sdk = { quotes: {} } as unknown as StockSDK;
+    for (const bad of ['toString', 'constructor', 'valueOf', '__proto__']) {
+      const m = findCommand(['call', bad])!;
+      expect(() => dispatch(sdk, m.spec, { positional: m.rest, options: {} })).toThrow(
+        CliUsageError
+      );
+    }
+  });
 });

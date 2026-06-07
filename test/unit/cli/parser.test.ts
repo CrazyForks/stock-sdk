@@ -42,4 +42,10 @@ describe('parseArgv', () => {
     expect(r.options.quiet).toBe(true);
     expect(r.options.q).toBe(true);
   });
+
+  it('#14 --limit -5 负数作为 flag 值(不丢值、不变成游离 positional)', () => {
+    const r = parseArgv(['kline', '600519', '--limit', '-5'], new Set());
+    expect(r.options.limit).toBe('-5');
+    expect(r.positional).toEqual(['kline', '600519']);
+  });
 });

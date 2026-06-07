@@ -42,8 +42,10 @@ export function parseArgv(
     }
   };
 
+  // 负数 token(-5 / -3.14)也是合法的 flag 值(与 isNumericToken 对齐,避免 `--limit -5` 丢值)
   const isValueLike = (token: string | undefined): boolean =>
-    token !== undefined && (token === '-' || !token.startsWith('-'));
+    token !== undefined &&
+    (token === '-' || !token.startsWith('-') || /^-\d/.test(token));
 
   const consume = (key: string, i: number): number => {
     if (booleanFlags.has(key)) {

@@ -27,6 +27,8 @@ export interface OptionSpec {
   type: OptionType;
   /** `enum` 类型的允许值。 */
   enum?: string[];
+  /** 必填选项:未提供则报「缺少必填选项」(dispatch.validateOptions 校验)。 */
+  required?: boolean;
   /** `none`/缺省时的默认值（不写则不注入该字段）。 */
   default?: unknown;
   /** 传给 SDK 前 `toUpperCase()`（市场类参数 a/hk/us → A/HK/US）。 */

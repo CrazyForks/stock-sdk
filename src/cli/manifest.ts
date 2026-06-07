@@ -27,6 +27,9 @@ const ADJUST: OptionSpec = {
 };
 const START: OptionSpec = { flag: 'start', field: 'startDate', type: 'string', desc: '开始日期 YYYYMMDD' };
 const END: OptionSpec = { flag: 'end', field: 'endDate', type: 'string', desc: '结束日期 YYYYMMDD' };
+const START_REQ: OptionSpec = { ...START, required: true };
+const END_REQ: OptionSpec = { ...END, required: true };
+const DIRECTION_OPT: OptionSpec = { flag: 'direction', type: 'enum', enum: ['north', 'south'], desc: '方向 north / south' };
 const PERIOD_DWM: OptionSpec = {
   flag: 'period',
   type: 'enum',
@@ -52,6 +55,33 @@ const CODELIST_OPTS: OptionSpec[] = [
 ];
 const SYMBOL: PositionalSpec[] = [{ name: 'symbol', required: true }];
 const CODE: PositionalSpec[] = [{ name: 'code', required: true }];
+
+// ---------- 指标 option（单一来源：周期型 / 布尔型列表驱动声明 + 解析）----------
+/** 周期型指标(number[]，如 ma 5,10,20)。 */
+const PERIOD_INDICATORS = ['ma', 'rsi', 'wr', 'bias'] as const;
+/** 布尔型指标(开关启用)。 */
+const BOOL_INDICATORS = ['macd', 'kdj', 'boll', 'cci', 'atr', 'obv', 'roc', 'dmi', 'sar', 'kc'] as const;
+/** 全部指标 flag 声明(供别名 `indicators` 与命名空间 `kline withIndicators` 共用，避免逐个手写)。 */
+const INDICATOR_OPTS: OptionSpec[] = [
+  ...PERIOD_INDICATORS.map(
+    (flag): OptionSpec => ({
+      flag,
+      type: 'number[]',
+      desc: `${flag.toUpperCase()} 周期(逗号分隔，如 5,10；仅 --${flag} 用默认)`,
+    })
+  ),
+  ...BOOL_INDICATORS.map(
+    (flag): OptionSpec => ({ flag, type: 'boolean', desc: `启用 ${flag.toUpperCase()}` })
+  ),
+];
+const MARKET_ENUM_OPT: OptionSpec = {
+  flag: 'market',
+  type: 'enum',
+  enum: ['A', 'HK', 'US'],
+  upper: true,
+  desc: '市场(默认自动识别)',
+};
+const WITH_INDICATORS_OPTS: OptionSpec[] = [PERIOD_DWM, ADJUST, START, END, MARKET_ENUM_OPT, ...INDICATOR_OPTS];
 
 // ---------- 84 个命名空间方法定义 ----------
 interface NsDef {
@@ -94,9 +124,10 @@ const NS_DEFS: NsDef[] = [
   {
     path: 'kline.withIndicators',
     shape: 'symbol+options',
-    summary: '带指标K线',
+    summary: '带指标K线(--ma 5,10 --macd --kdj --rsi ...)',
     pos: SYMBOL,
-    opts: [PERIOD_DWM, ADJUST, START, END, { flag: 'market', type: 'enum', enum: ['A', 'HK', 'US'], upper: true, desc: '市场(默认自动识别)' }],
+    opts: WITH_INDICATORS_OPTS,
+    invoke: (sdk, ctx) => invokeWithIndicators(sdk, ctx),
   },
   // board (10)
   { path: 'board.industry.list', shape: 'none', summary: '行业板块列表' },
@@ -140,6 +171,7 @@ const NS_DEFS: NsDef[] = [
     shape: 'positional',
     summary: '北向/南向分时(--direction north|south 或位置参数)',
     pos: [{ name: 'direction', enum: ['north', 'south'] }],
+    opts: [DIRECTION_OPT],
     invoke: (sdk, ctx) => callMethod(sdk, ['northbound', 'minute'], [readDirection(ctx)]),
   },
   { path: 'northbound.summary', shape: 'none', summary: '沪深港通资金汇总' },
@@ -149,6 +181,7 @@ const NS_DEFS: NsDef[] = [
     shape: 'symbol+options',
     summary: '北向/南向历史(--direction north|south；--start/--end)',
     pos: [{ name: 'direction', enum: ['north', 'south'] }],
+    opts: [DIRECTION_OPT, START, END],
     invoke: (sdk, ctx) => {
       const opts: Record<string, unknown> = {};
       if (ctx.options.start !== undefined) opts.startDate = ctx.options.start;
@@ -162,9 +195,9 @@ const NS_DEFS: NsDef[] = [
   { path: 'marketEvent.stockChanges', shape: 'positional', summary: '盘口异动', pos: [{ name: 'type' }] },
   { path: 'marketEvent.boardChanges', shape: 'none', summary: '板块异动' },
   // dragonTiger (5)
-  { path: 'dragonTiger.detail', shape: 'options', summary: '龙虎榜详情' },
+  { path: 'dragonTiger.detail', shape: 'options', summary: '龙虎榜详情(必填 --start/--end)', opts: [START_REQ, END_REQ] },
   { path: 'dragonTiger.stockStats', shape: 'positional', summary: '个股上榜统计', pos: [{ name: 'period' }] },
-  { path: 'dragonTiger.institution', shape: 'options', summary: '机构买卖统计' },
+  { path: 'dragonTiger.institution', shape: 'options', summary: '机构买卖统计(必填 --start/--end)', opts: [START_REQ, END_REQ] },
   { path: 'dragonTiger.branchRank', shape: 'positional', summary: '营业部排行', pos: [{ name: 'period' }] },
   { path: 'dragonTiger.seatDetail', shape: 'positional', summary: '个股席位明细', pos: [{ name: 'symbol', required: true }, { name: 'date', required: true }] },
   // blockTrade (3)
@@ -284,20 +317,39 @@ function klineOptsFromCtx(ctx: InvokeContext): Record<string, unknown> {
 }
 
 /** indicators 命令：把 --ma/--macd/... 组装成 KlineWithIndicatorsOptions.indicators（cli.md §4.1）。 */
-const PERIOD_INDICATORS = ['ma', 'rsi', 'wr', 'bias'] as const; // 走 { periods: [...] }
-const BOOL_INDICATORS = ['macd', 'kdj', 'boll', 'cci', 'atr', 'obv', 'roc', 'dmi', 'sar', 'kc'] as const; // 布尔启用
 function buildIndicatorOptions(opts: Record<string, unknown>): Record<string, unknown> {
   const indicators: Record<string, unknown> = {};
   for (const key of PERIOD_INDICATORS) {
     const v = opts[key];
     if (v === undefined) continue;
-    const nums = v === true ? [] : toNumberArray(v);
-    indicators[key] = nums.length > 0 ? { periods: nums } : {}; // 无有效周期 → 用指标默认
+    if (v === true) {
+      indicators[key] = {}; // 仅 --ma → 用指标默认周期
+      continue;
+    }
+    const nums = toNumberArray(v);
+    if (nums.length > 0) indicators[key] = { periods: nums };
+    // v 为 'false'/'0'/'no' 等非数字串 → toNumberArray 为空 → 不启用(修 --ma=false 误启用)
   }
   for (const key of BOOL_INDICATORS) {
-    if (opts[key] !== undefined) indicators[key] = true;
+    const v = opts[key];
+    if (v === undefined) continue;
+    // 布尔语义：--macd / --macd true → 启用；--macd=false / =0 / =no → 不启用(修 =false 反而启用)
+    if (v === true || v === 'true' || v === '1' || v === 'yes') indicators[key] = true;
   }
   return indicators;
+}
+
+/** kline.withIndicators 的统一 invoke(别名 `indicators` 与命名空间直达 `kline withIndicators` 共用)。 */
+function invokeWithIndicators(sdk: StockSDK, ctx: InvokeContext): Promise<unknown> {
+  const symbol = requireSymbol(ctx, 'indicators');
+  const opts: Record<string, unknown> = {};
+  if (ctx.options.period !== undefined) opts.period = ctx.options.period;
+  if (ctx.options.adjust !== undefined) opts.adjust = ctx.options.adjust === 'none' ? '' : ctx.options.adjust;
+  if (ctx.options.start !== undefined) opts.startDate = ctx.options.start;
+  if (ctx.options.end !== undefined) opts.endDate = ctx.options.end;
+  if (ctx.options.market !== undefined) opts.market = ctx.options.market;
+  opts.indicators = buildIndicatorOptions(ctx.options);
+  return callMethod(sdk, ['kline', 'withIndicators'], [symbol, opts]);
 }
 
 function toNumberArray(value: unknown): number[] {
@@ -306,16 +358,6 @@ function toNumberArray(value: unknown): number[] {
     .split(',')
     .map((s) => Number(s.trim()))
     .filter((n) => !Number.isNaN(n));
-}
-
-function applyLimit<T>(result: T, opts: Record<string, unknown>): T {
-  const limit = opts.limit;
-  // limit 须为 >=1 的数值；无值(true) / 0 / 负数 视为不限制
-  if (limit !== undefined && limit !== true && Array.isArray(result)) {
-    const n = Number(limit);
-    if (!Number.isNaN(n) && n >= 1) return result.slice(0, n) as unknown as T;
-  }
-  return result;
 }
 
 export const ALIAS_COMMANDS: CommandSpec[] = [
@@ -347,11 +389,26 @@ export const ALIAS_COMMANDS: CommandSpec[] = [
           groups[tag].push(c);
         }
       }
+      // 各市场并发请求、互不阻塞;单市场失败不连累其它(部分成功仍返回可用结果)。
+      const tasks: Array<Promise<unknown>> = [];
+      if (groups.a.length)
+        tasks.push(Promise.resolve(full ? sdk.quotes.cn(groups.a) : sdk.quotes.cnSimple(groups.a)));
+      if (groups.hk.length) tasks.push(Promise.resolve(sdk.quotes.hk(groups.hk)));
+      if (groups.us.length) tasks.push(Promise.resolve(sdk.quotes.us(groups.us)));
+      if (groups.fund.length) tasks.push(Promise.resolve(sdk.quotes.fund(groups.fund)));
+      const settled = await Promise.allSettled(tasks);
       const out: unknown[] = [];
-      if (groups.a.length) out.push(...(await (full ? sdk.quotes.cn(groups.a) : sdk.quotes.cnSimple(groups.a))));
-      if (groups.hk.length) out.push(...(await sdk.quotes.hk(groups.hk)));
-      if (groups.us.length) out.push(...(await sdk.quotes.us(groups.us)));
-      if (groups.fund.length) out.push(...(await sdk.quotes.fund(groups.fund)));
+      const rejected: unknown[] = [];
+      for (const r of settled) {
+        if (r.status === 'fulfilled') out.push(...(r.value as unknown[]));
+        else rejected.push(r.reason);
+      }
+      // 全部失败 → 抛首个错误(保留 SdkError 类型与退出码);部分成功 → 返回可用结果 + stderr 提示。
+      if (out.length === 0 && rejected.length > 0) throw rejected[0];
+      if (rejected.length > 0) {
+        const msg = rejected.map((e) => (e instanceof Error ? e.message : String(e))).join('; ');
+        process.stderr.write(`stock-sdk: 部分市场行情查询失败: ${msg}\n`);
+      }
       return out;
     },
   },
@@ -367,7 +424,7 @@ export const ALIAS_COMMANDS: CommandSpec[] = [
       const market = resolveForcedMarket(ctx.options.market) ?? detectMarketTag(symbol);
       const opts = klineOptsFromCtx(ctx);
       const method = market === 'hk' ? 'hk' : market === 'us' ? 'us' : 'cn';
-      return applyLimit(await callMethod(sdk, ['kline', method], [symbol, opts]), ctx.options);
+      return callMethod(sdk, ['kline', method], [symbol, opts]);
     },
   },
   {
@@ -382,7 +439,7 @@ export const ALIAS_COMMANDS: CommandSpec[] = [
       const market = resolveForcedMarket(ctx.options.market) ?? detectMarketTag(symbol);
       const opts = klineOptsFromCtx(ctx);
       const method = market === 'hk' ? 'hkMinute' : market === 'us' ? 'usMinute' : 'cnMinute';
-      return applyLimit(await callMethod(sdk, ['kline', method], [symbol, opts]), ctx.options);
+      return callMethod(sdk, ['kline', method], [symbol, opts]);
     },
   },
   {
@@ -391,27 +448,8 @@ export const ALIAS_COMMANDS: CommandSpec[] = [
     summary: '带指标K线(--ma 5,10,20 --macd --kdj --rsi --boll ...)',
     argShape: 'symbol+options',
     positional: SYMBOL,
-    options: [
-      PERIOD_DWM,
-      ADJUST,
-      START,
-      END,
-      { flag: 'ma', type: 'number[]', desc: '均线周期，如 5,10,20' },
-      { flag: 'macd', type: 'boolean', desc: '启用 MACD' },
-      { flag: 'kdj', type: 'boolean', desc: '启用 KDJ' },
-      { flag: 'rsi', type: 'number[]', desc: 'RSI 周期，如 6,12,24（或仅 --rsi 用默认）' },
-      { flag: 'boll', type: 'boolean', desc: '启用 BOLL' },
-    ],
-    invoke: async (sdk, ctx) => {
-      const symbol = requireSymbol(ctx, 'indicators');
-      const opts: Record<string, unknown> = {};
-      if (ctx.options.period !== undefined) opts.period = ctx.options.period;
-      if (ctx.options.adjust !== undefined) opts.adjust = ctx.options.adjust === 'none' ? '' : ctx.options.adjust;
-      if (ctx.options.start !== undefined) opts.startDate = ctx.options.start;
-      if (ctx.options.end !== undefined) opts.endDate = ctx.options.end;
-      opts.indicators = buildIndicatorOptions(ctx.options);
-      return callMethod(sdk, ['kline', 'withIndicators'], [symbol, opts]);
-    },
+    options: [PERIOD_DWM, ADJUST, START, END, ...INDICATOR_OPTS],
+    invoke: invokeWithIndicators,
   },
   {
     path: ['search'],
@@ -423,7 +461,7 @@ export const ALIAS_COMMANDS: CommandSpec[] = [
     invoke: async (sdk, ctx) => {
       const keyword = ctx.positional[0];
       if (!keyword) throw new CliUsageError('缺少搜索关键词', '用法: stock-sdk search <keyword>');
-      return applyLimit(await sdk.search(keyword), ctx.options);
+      return sdk.search(keyword);
     },
   },
   {
@@ -518,9 +556,22 @@ export const ALIAS_COMMANDS: CommandSpec[] = [
           throw new CliUsageError('--args 不是合法 JSON', '示例: --args \'[["sh600519"]]\'');
         }
       }
-      const target = path
-        .split('.')
-        .reduce<unknown>((o, k) => (o == null ? undefined : (o as Record<string, unknown>)[k]), sdk);
+      // 防原型链逃逸:禁止 __proto__/prototype/constructor 与 Object.prototype 上的继承成员
+      // (否则 `call toString` / `call constructor` 会命中内置方法并产生困惑输出/报错)。
+      const DANGEROUS = new Set(['__proto__', 'prototype', 'constructor']);
+      let target: unknown = sdk;
+      for (const k of path.split('.')) {
+        if (
+          DANGEROUS.has(k) ||
+          k in Object.prototype ||
+          target == null ||
+          (typeof target !== 'object' && typeof target !== 'function')
+        ) {
+          target = undefined;
+          break;
+        }
+        target = (target as Record<string, unknown>)[k];
+      }
       if (typeof target !== 'function') {
         throw new CliUsageError(`未知方法: ${path}`, '形如 quotes.cn / kline.cn');
       }

@@ -1,15 +1,29 @@
 /**
  * 命令分发（cli.md §3 / §9）：按 argShape 把位置参数 + flags 组装成实参并调用 SDK。
- * 自定义 `invoke` 的命令（高频别名）走自身逻辑，不经默认派生。
+ *
+ * 选项校验(未知 flag / enum / 类型 / 缺值 / 重复 / 必填)与 `--limit` 输出裁剪在 dispatch
+ * 层【统一】执行 —— 别名命令(自定义 `invoke`)与命名空间直达命令走同一套校验,杜绝
+ * 「别名绕过 enum/类型校验」「--limit 只在别名生效」这类两条路径不一致的问题。
  */
 import type { StockSDK } from '../sdk';
 import { CliUsageError } from './errors';
 import type { CommandSpec, InvokeContext, OptionSpec, PositionalSpec } from './types';
 
-/** 把原始 flags 按 OptionSpec 转换类型 + 归一，组成 options 对象；未声明的透传。 */
 /** 未声明 flag 的字段名映射：CLI 习惯的 --start/--end → SDK 的 startDate/endDate。 */
 const FLAG_ALIAS: Record<string, string> = { start: 'startDate', end: 'endDate' };
 
+/** 全局选项(命令无关,index.ts 的 resolveGlobal 消费):不属命令 option、不透传 SDK、不报「未知选项」。 */
+const GLOBAL_FLAGS = new Set([
+  'format', 'f', 'pretty', 'quiet', 'q', 'help', 'h', 'version', 'V', 'timeout',
+]);
+/** CLI 输出层后处理 flag(对结果数组裁剪):不透传 SDK,对所有命令统一生效。 */
+const POSTPROCESS_FLAGS = new Set(['limit']);
+
+function isPassthroughFlag(key: string): boolean {
+  return GLOBAL_FLAGS.has(key) || POSTPROCESS_FLAGS.has(key);
+}
+
+/** 把原始 flags 按 OptionSpec 转换类型 + 归一，组成 options 对象；未声明的透传。 */
 export function buildOptions(
   spec: CommandSpec,
   rawOptions: Record<string, unknown>
@@ -19,6 +33,7 @@ export function buildOptions(
   for (const opt of spec.options ?? []) declared.set(opt.flag, opt);
 
   for (const [key, raw] of Object.entries(rawOptions)) {
+    if (isPassthroughFlag(key)) continue; // 全局/输出层 flag 不进 SDK options
     const opt = declared.get(key);
     if (!opt) {
       if (raw === true) continue; // 未声明且无值的 flag：丢弃，避免脏 true 进 options
@@ -114,13 +129,54 @@ function invokeMethod(sdk: StockSDK, path: string[], args: unknown[]): Promise<u
   return Promise.resolve((target as (...a: unknown[]) => unknown)(...args));
 }
 
-/** 执行一条命令。 */
-/** 待值 flag（非 boolean/number[]）在 argv 末尾无值时被 parser 置成 `true`，拦成「缺少值」用法错误。 */
-function validateOptionValues(spec: CommandSpec, rawOptions: Record<string, unknown>): void {
+/**
+ * 统一选项校验(别名 + 命名空间共用,在 dispatch 入口对所有命令执行):
+ * - 声明了 options 的命令:未知 flag → 报错;enum/number 非法值 → 报错。
+ * - 待值 flag(非 boolean/number[])在 argv 末尾无值被 parser 置成 `true` → 「缺少值」。
+ * - 非 number[] 的 flag 被重复指定(parser 收集成数组)→ 「不能重复」。
+ * - 标了 required 的 option 缺失 → 「缺少必填选项」。
+ */
+function validateOptions(spec: CommandSpec, rawOptions: Record<string, unknown>): void {
+  const declared = new Map<string, OptionSpec>();
+  for (const opt of spec.options ?? []) declared.set(opt.flag, opt);
+  const strict = declared.size > 0; // 仅对声明了 opts 的命令拒绝未知 flag(无 opts 的命令保持透传)
+
+  for (const [key, raw] of Object.entries(rawOptions)) {
+    if (isPassthroughFlag(key)) continue;
+    const opt = declared.get(key);
+    if (!opt) {
+      if (strict) {
+        throw new CliUsageError(
+          `未知选项 --${key}`,
+          `运行 \`stock-sdk ${spec.path.join(' ')} --help\` 查看可用选项`
+        );
+      }
+      continue;
+    }
+    if (raw === true && opt.type !== 'boolean' && opt.type !== 'number[]') {
+      throw new CliUsageError(`--${key} 缺少值`);
+    }
+    // 归一化(取末值消除重复 flag 数组 + upper 大小写),写回 rawOptions 供别名 invoke 读到与
+    // 命名空间一致的值。number[] 保留数组(由 convert/buildIndicatorOptions 内部转换)。
+    if (opt.type !== 'number[]') {
+      let value: unknown = lastOf(raw);
+      if (opt.upper && typeof value === 'string') value = value.toUpperCase();
+      if (value !== raw) rawOptions[key] = value;
+      if (opt.type === 'enum' && opt.enum) {
+        const v = typeof value === 'string' ? value : String(value);
+        if (!opt.enum.includes(v)) {
+          throw new CliUsageError(`--${key} 非法值「${v}」`, `可选: ${opt.enum.join(' / ')}`);
+        }
+      }
+      if (opt.type === 'number' && value !== true && Number.isNaN(Number(value))) {
+        throw new CliUsageError(`--${key} 需要数值，得到「${String(value)}」`);
+      }
+    }
+  }
+
   for (const opt of spec.options ?? []) {
-    if (opt.type === 'boolean' || opt.type === 'number[]') continue;
-    if (rawOptions[opt.flag] === true) {
-      throw new CliUsageError(`--${opt.flag} 缺少值`);
+    if (opt.required && rawOptions[opt.flag] === undefined) {
+      throw new CliUsageError(`缺少必填选项 --${opt.flag}`, opt.desc);
     }
   }
 }
@@ -139,26 +195,12 @@ function validatePositionalEnum(spec: CommandSpec, positional: string[]): void {
   }
 }
 
-/**
- * 别名命令走自定义 invoke 会绕过 buildOptions→convert 的 enum/类型校验与归一，
- * 分发前对「已声明的 options」按 flag 名统一过一遍 convert：
- * - enum 非法值抛 CliUsageError（修复 `kline 600519 --period xyz` 不报错）；
- * - 标量(enum/string/number)取末值，重复 flag 不再以数组透传给 SDK（修复 `--period daily --period weekly`）；
- * - 类型转换 + map 归一，使 invoke 读取到的 `ctx.options.*` 与命名空间路径一致。
- * 未声明的 flag 原样保留（如 indicators 的 wr/cci 等，由 invoke 自行处理）。
- */
-function normalizeDeclaredOptions(
-  spec: CommandSpec,
-  rawOptions: Record<string, unknown>
-): Record<string, unknown> {
-  const declared = spec.options;
-  if (!declared || declared.length === 0) return rawOptions;
-  const out: Record<string, unknown> = { ...rawOptions };
-  for (const opt of declared) {
-    if (rawOptions[opt.flag] === undefined) continue;
-    out[opt.flag] = convert(opt, rawOptions[opt.flag]);
-  }
-  return out;
+/** `--limit N` 输出层裁剪(对结果数组取前 N;无值/0/负数/非数视为不限制)。所有命令统一适用。 */
+function applyLimit(result: unknown, rawOptions: Record<string, unknown>): unknown {
+  const raw = rawOptions.limit;
+  if (raw === undefined || raw === true || !Array.isArray(result)) return result;
+  const n = Number(lastOf(raw));
+  return !Number.isNaN(n) && n >= 1 ? result.slice(0, n) : result;
 }
 
 export function dispatch(
@@ -166,13 +208,18 @@ export function dispatch(
   spec: CommandSpec,
   ctx: InvokeContext
 ): Promise<unknown> {
-  validateOptionValues(spec, ctx.options);
+  // 同步校验:缺值/enum/类型/未知/必填即时抛 CliUsageError(调用方与测试可同步捕获)。
+  validateOptions(spec, ctx.options);
   validatePositionalEnum(spec, ctx.positional);
-  if (spec.invoke) {
-    const options = normalizeDeclaredOptions(spec, ctx.options);
-    return spec.invoke(sdk, options === ctx.options ? ctx : { ...ctx, options });
-  }
+  const result = spec.invoke ? spec.invoke(sdk, ctx) : runDefault(sdk, spec, ctx);
+  return Promise.resolve(result).then((r) => applyLimit(r, ctx.options));
+}
 
+function runDefault(
+  sdk: StockSDK,
+  spec: CommandSpec,
+  ctx: InvokeContext
+): Promise<unknown> {
   const options = buildOptions(spec, ctx.options);
   switch (spec.argShape) {
     case 'none':
