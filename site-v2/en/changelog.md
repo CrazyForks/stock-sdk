@@ -6,9 +6,9 @@ pageClass: changelog-page
 
 This page records the release history of Stock SDK. The latest v2.0.0 is an **architectural leap** — without adding data sources, it reworks the symbol model, data contract, API surface, request layer, and error system, and adds a CLI / MCP and subpath exports.
 
-## **2.0.0** (in development)
+## 2.0.0-beta.0
 
-> 🚧 **In development**: v2.0.0 is in progress on the `feature-v2` branch. The items below summarize the confirmed breaking changes and new capabilities. Exact method fields and unit-conversion edge cases are subject to the final implementation.
+> 🧪 **First public beta** (`npm i stock-sdk@beta`): the v2.0.0 API surface is stable — try it and send feedback; minor adjustments are still possible before the final release. The items below are the breaking changes and new capabilities relative to v1.
 >
 > v2 is a **hard, single-track switch** — there is no `compat` entry point and no legacy type aliases. When migrating from v1, read it alongside the [v1 → v2 migration guide](/en/guide/migration-v1-to-v2).
 

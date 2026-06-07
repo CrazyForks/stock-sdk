@@ -1,6 +1,6 @@
 {
   "name": "stock-sdk",
-  "version": "1.10.1",
+  "version": "2.0.0-beta.0",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -22,6 +22,10 @@
     "preview": "vitepress preview website",
     "build:docs": "yarn docs:meta && DOCS_BASE=/ vitepress build website",
     "build:pages": "yarn docs:meta && DOCS_BASE=/stock-sdk/ vitepress build website",
+    "dev:v2": "vitepress dev site-v2",
+    "preview:v2": "vitepress preview site-v2",
+    "build:v2": "DOCS_BASE=/ vitepress build site-v2",
+    "build:v2:pages": "DOCS_BASE=/stock-sdk/ vitepress build site-v2",
     "prepare": "node ./scripts/install-git-hooks.js"
   },
   "exports": {
