@@ -56,13 +56,15 @@ function validateArgs(
         ? Array.isArray(v)
         : prop.type === 'string'
           ? typeof v === 'string'
-          : prop.type === 'number' || prop.type === 'integer'
-            ? typeof v === 'number'
-            : prop.type === 'boolean'
-              ? typeof v === 'boolean'
-              : prop.type === 'object'
-                ? typeof v === 'object' && !Array.isArray(v)
-                : true;
+          : prop.type === 'integer'
+            ? Number.isInteger(v)
+            : prop.type === 'number'
+              ? typeof v === 'number'
+              : prop.type === 'boolean'
+                ? typeof v === 'boolean'
+                : prop.type === 'object'
+                  ? typeof v === 'object' && !Array.isArray(v)
+                  : true;
     if (!okType) return `参数 "${key}" 类型应为 ${prop.type}`;
   }
   return null;

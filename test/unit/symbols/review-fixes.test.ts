@@ -67,3 +67,19 @@ describe('N1 finish 的 market 不再与 exchange 脱节', () => {
     expect(ns.exchange).toBe('US');
   });
 });
+
+describe('PR#38 点分形式剥离冗余前缀(防双前缀)', () => {
+  it('sh600519.SH → code 600519，下游不拼成 shsh600519', () => {
+    const ns = normalizeSymbol('sh600519.SH');
+    expect(ns).toMatchObject({ market: 'CN', exchange: 'SSE', code: '600519' });
+    expect(toTencentSymbol(ns)).toBe('sh600519');
+  });
+
+  it('sz000001.SZ → code 000001', () => {
+    expect(normalizeSymbol('sz000001.SZ').code).toBe('000001');
+  });
+
+  it('无前缀的点分形式不受影响', () => {
+    expect(normalizeSymbol('600519.SH')).toMatchObject({ exchange: 'SSE', code: '600519' });
+  });
+});

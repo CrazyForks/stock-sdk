@@ -124,7 +124,7 @@ function getCachedFormatter(
   tz: string,
   options: Intl.DateTimeFormatOptions
 ): Intl.DateTimeFormat {
-  const key = `${locale}|${tz}`;
+  const key = `${locale}|${tz}|${JSON.stringify(options)}`;
   let dtf = FORMATTER_CACHE.get(key);
   if (!dtf) {
     dtf = new Intl.DateTimeFormat(locale, { timeZone: tz, ...options });

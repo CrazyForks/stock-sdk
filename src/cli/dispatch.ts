@@ -119,14 +119,19 @@ function normalizePositional(p: PositionalSpec, value: string): string {
 }
 
 function invokeMethod(sdk: StockSDK, path: string[], args: unknown[]): Promise<unknown> {
+  let parent: unknown = undefined;
   const target = path.reduce<unknown>((o, k) => {
     if (o == null || typeof o !== 'object') return undefined;
+    parent = o;
     return (o as Record<string, unknown>)[k];
   }, sdk);
   if (typeof target !== 'function') {
     throw new CliUsageError(`未知命令: ${path.join(' ')}`);
   }
-  return Promise.resolve((target as (...a: unknown[]) => unknown)(...args));
+  // 用 apply 保留父级上下文，防止未来未 .bind 的命名空间方法丢失 this(当前命名空间方法均已 bind，此为防御)。
+  return Promise.resolve(
+    (target as (...a: unknown[]) => unknown).apply(parent, args)
+  );
 }
 
 /**

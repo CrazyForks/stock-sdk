@@ -97,7 +97,17 @@ export function normalizeSymbol(
     }
     if (SUFFIX_MAP[upperRight]) {
       const s = SUFFIX_MAP[upperRight];
-      return finish(s.market, s.exchange, left, 'stock');
+      // 剥离 left 可能的冗余前缀:'sh600519.SH' 的 code 应为 '600519' 而非 'sh600519'，
+      // 否则下游 toTencentSymbol 会拼成 'shsh600519'。
+      let cleanLeft = left;
+      const lowerLeft = left.toLowerCase();
+      for (const p of PREFIXES) {
+        if (lowerLeft.startsWith(p) && left.length > p.length) {
+          cleanLeft = left.slice(p.length);
+          break;
+        }
+      }
+      return finish(s.market, s.exchange, cleanLeft, 'stock');
     }
     if (FUTURES_EXCHANGES[upperLeft]) {
       const fx = FUTURES_EXCHANGES[upperLeft];
