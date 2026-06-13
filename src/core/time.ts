@@ -133,18 +133,8 @@ function getCachedFormatter(
   return dtf;
 }
 
-function wallTimeToUTC(wall: ParsedWallClock, tz: string): number {
-  // 第一次:把壁钟时间当作 UTC 得到一个候选时间戳。
-  const utcGuess = Date.UTC(
-    wall.year,
-    wall.month - 1,
-    wall.day,
-    wall.hour,
-    wall.minute,
-    wall.second
-  );
-
-  // 看这个 UTC 时间在目标时区显示的壁钟时间。差值即为时区偏移。
+/** 求 UTC 时刻 `tsUtc` 在目标时区显示的壁钟时间（编码为 UTC ms，便于做差求偏移） */
+function displayedWallUtc(tsUtc: number, tz: string): number {
   const dtf = getCachedFormatter('en-US', tz, {
     hour12: false,
     year: 'numeric',
@@ -154,7 +144,7 @@ function wallTimeToUTC(wall: ParsedWallClock, tz: string): number {
     minute: '2-digit',
     second: '2-digit',
   });
-  const parts = dtf.formatToParts(new Date(utcGuess));
+  const parts = dtf.formatToParts(new Date(tsUtc));
   const partMap: Record<string, string> = {};
   for (const p of parts) {
     if (p.type !== 'literal') partMap[p.type] = p.value;
@@ -163,7 +153,7 @@ function wallTimeToUTC(wall: ParsedWallClock, tz: string): number {
   let displayedHour = parseInt(partMap.hour ?? '0', 10);
   if (displayedHour === 24) displayedHour = 0;
 
-  const displayedUtc = Date.UTC(
+  return Date.UTC(
     parseInt(partMap.year ?? '0', 10),
     parseInt(partMap.month ?? '1', 10) - 1,
     parseInt(partMap.day ?? '1', 10),
@@ -171,11 +161,37 @@ function wallTimeToUTC(wall: ParsedWallClock, tz: string): number {
     parseInt(partMap.minute ?? '0', 10),
     parseInt(partMap.second ?? '0', 10)
   );
+}
 
-  // utcGuess - displayedUtc = 该时区相对 UTC 的偏移。
-  // 真实 UTC = utcGuess + offset
-  const offset = utcGuess - displayedUtc;
-  return utcGuess + offset;
+function wallTimeToUTC(wall: ParsedWallClock, tz: string): number {
+  // 目标:找到 UTC 时刻 T,使其在 tz 显示的壁钟 == wall。
+  // 记 displayed(T) 为 T 在 tz 的壁钟(UTC ms 编码),偏移 off(T) = displayed(T) - T,
+  // 则解满足 T = target - off(T),用定点迭代求解。
+  const target = Date.UTC(
+    wall.year,
+    wall.month - 1,
+    wall.day,
+    wall.hour,
+    wall.minute,
+    wall.second
+  );
+
+  // 第一遍:在 target 时刻采样偏移。target 与真实 T 落在 DST 切换同侧时一次即中。
+  const first = 2 * target - displayedWallUtc(target, tz);
+  if (displayedWallUtc(first, tz) === target) {
+    return first;
+  }
+
+  // 第二遍:首遍偏移取错了切换侧(美东春令日 03:00–07:00 / 冬令日 01:00–06:00 的
+  // 壁钟窗口,单遍会整体偏 1 小时),在 first 时刻重新采样偏移再算一次。
+  const second = target - displayedWallUtc(first, tz) + first;
+  if (displayedWallUtc(second, tz) === target) {
+    return second;
+  }
+
+  // 两遍都不命中:wall 是春令跳变中不存在的壁钟时间(如美东 02:30),
+  // 取首遍结果 —— 按「顺延到跳变后」语义返回(02:30 缺失 → 等同 03:30 EDT 时刻)。
+  return first;
 }
 
 /**
