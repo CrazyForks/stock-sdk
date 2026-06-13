@@ -6,7 +6,7 @@ const sdk = new StockSDK();
 describe('TencentStockSDK - Quotes', () => {
   describe('getFullQuotes', () => {
     it('should return A股全量行情', async () => {
-      const res = await sdk.getFullQuotes(['sz000858']);
+      const res = await sdk.quotes.cn(['sz000858']);
       expect(res.length).toBeGreaterThan(0);
       const q = res[0];
       expect(q.code).toBe('000858');
@@ -18,19 +18,19 @@ describe('TencentStockSDK - Quotes', () => {
 
     it('should handle multiple full quotes', async () => {
       const codes = ['sz000858', 'sh600000', 'sz000001', 'sh600519'];
-      const res = await sdk.getFullQuotes(codes);
+      const res = await sdk.quotes.cn(codes);
       expect(res.length).toBe(4);
     });
 
     it('should return empty for empty codes', async () => {
-      const res = await sdk.getFullQuotes([]);
+      const res = await sdk.quotes.cn([]);
       expect(res).toEqual([]);
     });
   });
 
   describe('getSimpleQuotes', () => {
     it('should return 简要行情', async () => {
-      const res = await sdk.getSimpleQuotes(['sz000858']);
+      const res = await sdk.quotes.cnSimple(['sz000858']);
       expect(res.length).toBeGreaterThan(0);
       const q = res[0];
       expect(q.code).toBe('000858');
@@ -38,7 +38,7 @@ describe('TencentStockSDK - Quotes', () => {
     });
 
     it('should return 指数简要行情', async () => {
-      const res = await sdk.getSimpleQuotes(['sh000001']);
+      const res = await sdk.quotes.cnSimple(['sh000001']);
       expect(res.length).toBeGreaterThan(0);
       const q = res[0];
       expect(q.code).toBe('000001');
@@ -47,19 +47,19 @@ describe('TencentStockSDK - Quotes', () => {
 
     it('should handle multiple simple quotes', async () => {
       const codes = ['sz000858', 'sh000001'];
-      const res = await sdk.getSimpleQuotes(codes);
+      const res = await sdk.quotes.cnSimple(codes);
       expect(res.length).toBe(2);
     });
 
     it('should return empty for empty codes', async () => {
-      const res = await sdk.getSimpleQuotes([]);
+      const res = await sdk.quotes.cnSimple([]);
       expect(res).toEqual([]);
     });
   });
 
   describe('getHKQuotes', () => {
     it('should return 港股行情 with full fields', async () => {
-      const res = await sdk.getHKQuotes(['00700']);
+      const res = await sdk.quotes.hk(['00700']);
       expect(res.length).toBeGreaterThan(0);
       const q = res[0];
       expect(q.code).toBe('00700');
@@ -76,19 +76,19 @@ describe('TencentStockSDK - Quotes', () => {
     });
 
     it('should handle multiple HK quotes', async () => {
-      const res = await sdk.getHKQuotes(['09988', '00700']);
+      const res = await sdk.quotes.hk(['09988', '00700']);
       expect(res.length).toBe(2);
     });
 
     it('should return empty for empty codes', async () => {
-      const res = await sdk.getHKQuotes([]);
+      const res = await sdk.quotes.hk([]);
       expect(res).toEqual([]);
     });
   });
 
   describe('getUSQuotes', () => {
     it('should return 美股行情 with full fields', async () => {
-      const res = await sdk.getUSQuotes(['AAPL']);
+      const res = await sdk.quotes.us(['AAPL']);
       expect(res.length).toBeGreaterThan(0);
       const q = res[0];
       expect(q.code).toContain('AAPL');
@@ -107,19 +107,19 @@ describe('TencentStockSDK - Quotes', () => {
     });
 
     it('should handle multiple US quotes', async () => {
-      const res = await sdk.getUSQuotes(['BABA', 'AAPL']);
+      const res = await sdk.quotes.us(['BABA', 'AAPL']);
       expect(res.length).toBe(2);
     });
 
     it('should return empty for empty codes', async () => {
-      const res = await sdk.getUSQuotes([]);
+      const res = await sdk.quotes.us([]);
       expect(res).toEqual([]);
     });
   });
 
   describe('getFundQuotes', () => {
     it('should return 公募基金行情', async () => {
-      const res = await sdk.getFundQuotes(['000001']);
+      const res = await sdk.quotes.fund(['000001']);
       expect(res.length).toBeGreaterThan(0);
       const q = res[0];
       expect(q.code).toBe('000001');
@@ -127,12 +127,12 @@ describe('TencentStockSDK - Quotes', () => {
     });
 
     it('should handle multiple fund quotes', async () => {
-      const res = await sdk.getFundQuotes(['000001', '110011']);
+      const res = await sdk.quotes.fund(['000001', '110011']);
       expect(res.length).toBe(2);
     });
 
     it('should return empty for empty codes', async () => {
-      const res = await sdk.getFundQuotes([]);
+      const res = await sdk.quotes.fund([]);
       expect(res).toEqual([]);
     });
   });

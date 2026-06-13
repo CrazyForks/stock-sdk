@@ -49,7 +49,7 @@ describe('DragonTiger - getDragonTigerDetail', () => {
       })
     );
 
-    const result = await sdk.getDragonTigerDetail({
+    const result = await sdk.dragonTiger.detail({
       startDate: '20230403',
       endDate: '20230417',
     });
@@ -78,12 +78,12 @@ describe('DragonTiger - getDragonTigerStockStats', () => {
       })
     );
 
-    await sdk.getDragonTigerStockStats('3month');
+    await sdk.dragonTiger.stockStats('3month');
   });
 
   it('throws on invalid period', async () => {
     await expect(
-      sdk.getDragonTigerStockStats('5year' as never)
+      sdk.dragonTiger.stockStats('5year' as never)
     ).rejects.toThrow(/Invalid period/);
   });
 });
@@ -138,7 +138,7 @@ describe('DragonTiger - getDragonTigerStockSeatDetail', () => {
       })
     );
 
-    const result = await sdk.getDragonTigerStockSeatDetail('600519', '2023-04-15');
+    const result = await sdk.dragonTiger.seatDetail('600519', '2023-04-15');
     expect(result).toHaveLength(2);
     expect(result[0].side).toBe('buy');
     expect(result[0].buyAmount).toBe(100000000);

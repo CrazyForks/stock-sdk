@@ -5,7 +5,7 @@ const sdk = new StockSDK();
 
 describe('StockSDK - getKlineWithIndicators', () => {
   it('should return kline with MA indicators', async () => {
-    const res = await sdk.getKlineWithIndicators('sz000001', {
+    const res = await sdk.kline.withIndicators('sz000001', {
       startDate: '20241201',
       endDate: '20241220',
       indicators: {
@@ -18,7 +18,7 @@ describe('StockSDK - getKlineWithIndicators', () => {
   });
 
   it('should return kline with MACD indicators', async () => {
-    const res = await sdk.getKlineWithIndicators('sz000001', {
+    const res = await sdk.kline.withIndicators('sz000001', {
       startDate: '20241201',
       endDate: '20241220',
       indicators: {
@@ -31,7 +31,7 @@ describe('StockSDK - getKlineWithIndicators', () => {
   });
 
   it('should return kline with BOLL indicators', async () => {
-    const res = await sdk.getKlineWithIndicators('sz000001', {
+    const res = await sdk.kline.withIndicators('sz000001', {
       startDate: '20241201',
       endDate: '20241220',
       indicators: {
@@ -43,7 +43,7 @@ describe('StockSDK - getKlineWithIndicators', () => {
   });
 
   it('should return kline with KDJ indicators', async () => {
-    const res = await sdk.getKlineWithIndicators('sz000001', {
+    const res = await sdk.kline.withIndicators('sz000001', {
       startDate: '20241201',
       endDate: '20241220',
       indicators: {
@@ -55,7 +55,7 @@ describe('StockSDK - getKlineWithIndicators', () => {
   });
 
   it('should return kline with multiple indicators', async () => {
-    const res = await sdk.getKlineWithIndicators('sz000001', {
+    const res = await sdk.kline.withIndicators('sz000001', {
       startDate: '20241201',
       endDate: '20241220',
       indicators: {
@@ -94,7 +94,7 @@ describe('StockSDK - getKlineWithIndicators', () => {
   });
 
   it('should return kline with BIAS indicators', async () => {
-    const res = await sdk.getKlineWithIndicators('sz000001', {
+    const res = await sdk.kline.withIndicators('sz000001', {
       startDate: '20241201',
       endDate: '20241220',
       indicators: {
@@ -107,7 +107,7 @@ describe('StockSDK - getKlineWithIndicators', () => {
   });
 
   it('should return kline with CCI indicator', async () => {
-    const res = await sdk.getKlineWithIndicators('sz000001', {
+    const res = await sdk.kline.withIndicators('sz000001', {
       startDate: '20241201',
       endDate: '20241220',
       indicators: {
@@ -120,7 +120,7 @@ describe('StockSDK - getKlineWithIndicators', () => {
   });
 
   it('should return kline with ATR indicator', async () => {
-    const res = await sdk.getKlineWithIndicators('sz000001', {
+    const res = await sdk.kline.withIndicators('sz000001', {
       startDate: '20241201',
       endDate: '20241220',
       indicators: {
@@ -134,7 +134,7 @@ describe('StockSDK - getKlineWithIndicators', () => {
   });
 
   it('should auto detect HK market', async () => {
-    const res = await sdk.getKlineWithIndicators('00700', {
+    const res = await sdk.kline.withIndicators('00700', {
       startDate: '20241201',
       endDate: '20241220',
       indicators: {
@@ -146,7 +146,7 @@ describe('StockSDK - getKlineWithIndicators', () => {
   });
 
   it('should auto detect US market', async () => {
-    const res = await sdk.getKlineWithIndicators('105.MSFT', {
+    const res = await sdk.kline.withIndicators('105.MSFT', {
       startDate: '20241201',
       endDate: '20241220',
       indicators: {
@@ -158,7 +158,7 @@ describe('StockSDK - getKlineWithIndicators', () => {
   });
 
   it('should work without startDate (return all available data)', async () => {
-    const res = await sdk.getKlineWithIndicators('sz000001', {
+    const res = await sdk.kline.withIndicators('sz000001', {
       indicators: {
         ma: { periods: [5] },
       },
@@ -168,7 +168,7 @@ describe('StockSDK - getKlineWithIndicators', () => {
   });
 
   it('should work for HK market without startDate', async () => {
-    const res = await sdk.getKlineWithIndicators('00700', {
+    const res = await sdk.kline.withIndicators('00700', {
       indicators: {
         ma: { periods: [5] },
       },
@@ -178,7 +178,7 @@ describe('StockSDK - getKlineWithIndicators', () => {
   });
 
   it('should work for US market without startDate', async () => {
-    const res = await sdk.getKlineWithIndicators('105.MSFT', {
+    const res = await sdk.kline.withIndicators('105.MSFT', {
       indicators: {
         ma: { periods: [5] },
       },

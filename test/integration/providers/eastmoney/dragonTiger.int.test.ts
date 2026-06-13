@@ -8,7 +8,7 @@ const sdk = new StockSDK();
 
 describe('Eastmoney - Dragon Tiger Detail', () => {
   it('应获取指定日期范围的龙虎榜详情', async () => {
-    const list = await sdk.getDragonTigerDetail({
+    const list = await sdk.dragonTiger.detail({
       startDate: '20240101',
       endDate: '20240131',
     });
@@ -25,7 +25,7 @@ describe('Eastmoney - Dragon Tiger Detail', () => {
 
 describe('Eastmoney - Dragon Tiger Stock Stats', () => {
   it('应获取近一月个股上榜统计', async () => {
-    const stats = await sdk.getDragonTigerStockStats('1month');
+    const stats = await sdk.dragonTiger.stockStats('1month');
     expect(Array.isArray(stats)).toBe(true);
     expect(stats.length).toBeGreaterThan(0);
 
@@ -37,7 +37,7 @@ describe('Eastmoney - Dragon Tiger Stock Stats', () => {
 
 describe('Eastmoney - Dragon Tiger Branch Rank', () => {
   it('应获取近一月营业部排行', async () => {
-    const branches = await sdk.getDragonTigerBranchRank('1month');
+    const branches = await sdk.dragonTiger.branchRank('1month');
     expect(Array.isArray(branches)).toBe(true);
     if (branches.length > 0) {
       expect(branches[0].name).toBeTruthy();

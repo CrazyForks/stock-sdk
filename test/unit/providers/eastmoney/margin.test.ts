@@ -35,7 +35,7 @@ describe('Margin - getMarginAccountInfo', () => {
       })
     );
 
-    const result = await sdk.getMarginAccountInfo();
+    const result = await sdk.margin.accountInfo();
     expect(result).toHaveLength(1);
     expect(result[0].date).toBe('2024-01-15');
     expect(result[0].finBalance).toBe(1500000000000);
@@ -60,7 +60,7 @@ describe('Margin - getMarginTargetList', () => {
       })
     );
 
-    await sdk.getMarginTargetList('2024-01-15');
+    await sdk.margin.targetList('2024-01-15');
   });
 
   it('omits filter when no date provided', async () => {
@@ -90,7 +90,7 @@ describe('Margin - getMarginTargetList', () => {
       })
     );
 
-    const result = await sdk.getMarginTargetList();
+    const result = await sdk.margin.targetList();
     expect(result).toHaveLength(1);
     expect(result[0].code).toBe('600519');
     expect(result[0].finBalance).toBe(5000000000);

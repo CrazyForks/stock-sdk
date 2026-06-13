@@ -25,7 +25,7 @@ describe('Northbound - getNorthboundMinute', () => {
       )
     );
 
-    const result = await sdk.getNorthboundMinute('north');
+    const result = await sdk.northbound.minute('north');
     expect(result).toHaveLength(2);
     expect(result[0].date).toBe('2024-01-15');
     expect(result[0].time).toBe('09:30');
@@ -48,7 +48,7 @@ describe('Northbound - getNorthboundMinute', () => {
       )
     );
 
-    const result = await sdk.getNorthboundMinute('south');
+    const result = await sdk.northbound.minute('south');
     expect(result[0].shanghaiNetInflow).toBe(500);
     expect(result[0].totalNetInflow).toBe(1100);
   });
@@ -57,7 +57,7 @@ describe('Northbound - getNorthboundMinute', () => {
     server.use(
       http.get(MINUTE_URL, () => HttpResponse.json({ data: null }))
     );
-    const result = await sdk.getNorthboundMinute();
+    const result = await sdk.northbound.minute();
     expect(result).toEqual([]);
   });
 });
@@ -95,7 +95,7 @@ describe('Northbound - getNorthboundFlowSummary', () => {
       )
     );
 
-    const result = await sdk.getNorthboundFlowSummary();
+    const result = await sdk.northbound.summary();
     expect(result).toHaveLength(1);
     expect(result[0].date).toBe('2024-01-15');
     expect(result[0].boardName).toBe('沪股通');
@@ -143,7 +143,7 @@ describe('Northbound - getNorthboundHoldingRank', () => {
       })
     );
 
-    const result = await sdk.getNorthboundHoldingRank({
+    const result = await sdk.northbound.holdingRank({
       market: 'shanghai',
       period: '5day',
     });
@@ -165,7 +165,7 @@ describe('Northbound - getNorthboundHoldingRank', () => {
       })
     );
 
-    await sdk.getNorthboundHoldingRank({ market: 'all', period: '5day' });
+    await sdk.northbound.holdingRank({ market: 'all', period: '5day' });
   });
 });
 
@@ -184,6 +184,6 @@ describe('Northbound - getNorthboundIndividual', () => {
       })
     );
 
-    await sdk.getNorthboundIndividual('sh600519');
+    await sdk.northbound.individual('sh600519');
   });
 });

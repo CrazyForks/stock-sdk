@@ -114,7 +114,7 @@ describe('Futures - K-line API (MSW mock)', () => {
       )
     );
 
-    const result = await sdk.getFuturesKline('RBM');
+    const result = await sdk.futures.kline('RBM');
     expect(result).toHaveLength(2);
 
     const first = result[0];
@@ -144,19 +144,19 @@ describe('Futures - K-line API (MSW mock)', () => {
       )
     );
 
-    const result = await sdk.getFuturesKline('rb9999');
+    const result = await sdk.futures.kline('rb9999');
     expect(result).toEqual([]);
   });
 
   it('should throw on invalid symbol', async () => {
-    await expect(sdk.getFuturesKline('12345')).rejects.toThrow(
+    await expect(sdk.futures.kline('12345')).rejects.toThrow(
       /Invalid futures symbol/
     );
   });
 
   it('should throw on invalid period', async () => {
     await expect(
-      sdk.getFuturesKline('RBM', { period: 'yearly' as never })
+      sdk.futures.kline('RBM', { period: 'yearly' as never })
     ).rejects.toThrow(/period/i);
   });
 });
@@ -192,7 +192,7 @@ describe('Futures - Global spot API (MSW mock)', () => {
       })
     );
 
-    const result = await sdk.getGlobalFuturesSpot();
+    const result = await sdk.futures.globalSpot();
     expect(result).toHaveLength(1);
 
     const item = result[0];
@@ -240,7 +240,7 @@ describe('Futures - Inventory API (MSW mock)', () => {
       )
     );
 
-    const result = await sdk.getFuturesInventorySymbols();
+    const result = await sdk.futures.inventorySymbols();
     expect(result).toHaveLength(1);
     expect(result[0].code).toBe('rb');
     expect(result[0].name).toBe('螺纹钢');
@@ -274,7 +274,7 @@ describe('Futures - Inventory API (MSW mock)', () => {
       )
     );
 
-    const result = await sdk.getFuturesInventory('rb');
+    const result = await sdk.futures.inventory('rb');
     expect(result).toHaveLength(1);
     expect(result[0].code).toBe('rb');
     expect(result[0].date).toBe('2026-02-27');
@@ -308,7 +308,7 @@ describe('Futures - Inventory API (MSW mock)', () => {
       )
     );
 
-    const result = await sdk.getComexInventory('gold');
+    const result = await sdk.futures.comexInventory('gold');
     expect(result).toHaveLength(1);
     expect(result[0].date).toBe('2026-02-27');
     expect(result[0].name).toBe('黄金');
@@ -318,7 +318,7 @@ describe('Futures - Inventory API (MSW mock)', () => {
 
   it('should throw on invalid COMEX symbol', async () => {
     await expect(
-      sdk.getComexInventory('copper' as never)
+      sdk.futures.comexInventory('copper' as never)
     ).rejects.toThrow(/Invalid COMEX symbol/);
   });
 });

@@ -34,7 +34,7 @@ describe('BlockTrade - getBlockTradeMarketStat', () => {
       })
     );
 
-    const result = await sdk.getBlockTradeMarketStat();
+    const result = await sdk.blockTrade.marketStat();
     expect(result).toHaveLength(1);
     expect(result[0].date).toBe('2024-01-15');
     expect(result[0].shClose).toBe(3000);
@@ -77,7 +77,7 @@ describe('BlockTrade - getBlockTradeDetail', () => {
       })
     );
 
-    const result = await sdk.getBlockTradeDetail({
+    const result = await sdk.blockTrade.detail({
       startDate: '20240101',
       endDate: '20240131',
     });

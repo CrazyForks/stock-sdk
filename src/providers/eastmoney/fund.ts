@@ -123,11 +123,11 @@ async function fetchOnePage(
  *
  * @example
  * // 拉 2024 年第 1 页（默认按除息日倒序）
- * await sdk.getFundDividendList({ year: 2024 });
+ * await sdk.fund.dividendList({ year: 2024 });
  *
  * @example
  * // 拉 2024 年 110011 的全部分红
- * await sdk.getFundDividendList({ year: 2024, page: 'all', code: '110011' });
+ * await sdk.fund.dividendList({ year: 2024, page: 'all', code: '110011' });
  */
 export async function getFundDividendList(
   client: RequestClient,
@@ -203,7 +203,7 @@ function timestampToDate(ts: number): string {
  * @param code 基金代码（纯数字，如 `'110011'`）
  *
  * @example
- * const h = await sdk.getFundNavHistory('110011');
+ * const h = await sdk.fund.navHistory('110011');
  * console.log(h.name, h.items.length, h.items[h.items.length - 1]);
  */
 export async function getFundNavHistory(

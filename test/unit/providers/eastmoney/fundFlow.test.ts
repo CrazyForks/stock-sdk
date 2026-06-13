@@ -28,7 +28,7 @@ describe('FundFlow - getIndividualFundFlow', () => {
       })
     );
 
-    const result = await sdk.getIndividualFundFlow('sh600519');
+    const result = await sdk.fundFlow.individual('sh600519');
     expect(result).toHaveLength(2);
 
     const first = result[0];
@@ -48,13 +48,13 @@ describe('FundFlow - getIndividualFundFlow', () => {
       http.get(FFLOW_URL, () => HttpResponse.json({ data: { klines: [] } }))
     );
 
-    const result = await sdk.getIndividualFundFlow('600000');
+    const result = await sdk.fundFlow.individual('600000');
     expect(result).toEqual([]);
   });
 
   it('throws on invalid period', async () => {
     await expect(
-      sdk.getIndividualFundFlow('600000', { period: 'yearly' as never })
+      sdk.fundFlow.individual('600000', { period: 'yearly' as never })
     ).rejects.toThrow(/Invalid period/);
   });
 });
@@ -75,7 +75,7 @@ describe('FundFlow - getMarketFundFlow', () => {
       )
     );
 
-    const result = await sdk.getMarketFundFlow();
+    const result = await sdk.fundFlow.market();
     expect(result).toHaveLength(1);
     expect(result[0].date).toBe('2024-01-15');
     expect(result[0].shClose).toBe(3000.5);
@@ -118,7 +118,7 @@ describe('FundFlow - getFundFlowRank', () => {
       )
     );
 
-    const result = await sdk.getFundFlowRank({ indicator: 'today' });
+    const result = await sdk.fundFlow.rank({ indicator: 'today' });
     expect(result).toHaveLength(1);
     expect(result[0].code).toBe('600519');
     expect(result[0].name).toBe('贵州茅台');
@@ -158,7 +158,7 @@ describe('FundFlow - getFundFlowRank', () => {
       )
     );
 
-    const result = await sdk.getFundFlowRank({ indicator: '5day' });
+    const result = await sdk.fundFlow.rank({ indicator: '5day' });
     expect(result[0].changePercent).toBe(5.6);
     expect(result[0].mainNetInflow).toBe(7777);
   });
@@ -196,7 +196,7 @@ describe('FundFlow - getSectorFundFlowRank', () => {
       })
     );
 
-    const result = await sdk.getSectorFundFlowRank({
+    const result = await sdk.fundFlow.sectorRank({
       indicator: 'today',
       sectorType: 'industry',
     });
@@ -226,7 +226,7 @@ describe('FundFlow - getSectorFundFlowHistory', () => {
       })
     );
 
-    const result = await sdk.getSectorFundFlowHistory('BK0438');
+    const result = await sdk.fundFlow.sectorHistory('BK0438');
     expect(result).toHaveLength(1);
     expect(result[0].mainNetInflow).toBe(1000);
   });
@@ -240,7 +240,7 @@ describe('FundFlow - getSectorFundFlowHistory', () => {
       })
     );
 
-    const result = await sdk.getSectorFundFlowHistory('90.BK0500');
+    const result = await sdk.fundFlow.sectorHistory('90.BK0500');
     expect(result).toEqual([]);
   });
 });

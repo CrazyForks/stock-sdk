@@ -12,7 +12,7 @@ describe('getFundCodeList', () => {
   });
 
   it('should return fund code list as string array', async () => {
-    const codes = await sdk.getFundCodeList();
+    const codes = await sdk.codes.fund();
 
     // 验证返回为数组
     expect(Array.isArray(codes)).toBe(true);
@@ -30,9 +30,9 @@ describe('getFundCodeList', () => {
 
   it('should cache the result on second call', async () => {
     // 第一次调用
-    const codes1 = await sdk.getFundCodeList();
+    const codes1 = await sdk.codes.fund();
     // 第二次调用应该使用缓存
-    const codes2 = await sdk.getFundCodeList();
+    const codes2 = await sdk.codes.fund();
 
     expect(codes1.length).toBe(codes2.length);
     expect(codes1[0]).toBe(codes2[0]);

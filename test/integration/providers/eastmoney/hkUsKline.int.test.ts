@@ -6,7 +6,7 @@ const sdk = new StockSDK();
 describe('Eastmoney - HK/US Kline', () => {
   describe('getHKHistoryKline', () => {
     it('should return 港股日K线数据', async () => {
-      const res = await sdk.getHKHistoryKline('00700', {
+      const res = await sdk.kline.hk('00700', {
         startDate: '20241201',
         endDate: '20241220',
       });
@@ -20,7 +20,7 @@ describe('Eastmoney - HK/US Kline', () => {
     });
 
     it('should return 港股周K线数据', async () => {
-      const res = await sdk.getHKHistoryKline('09988', {
+      const res = await sdk.kline.hk('09988', {
         period: 'weekly',
         startDate: '20241101',
         endDate: '20241231',
@@ -31,9 +31,9 @@ describe('Eastmoney - HK/US Kline', () => {
 
     it('should support different adjust types', async () => {
       const [hfq, qfq, noAdj] = await Promise.all([
-        sdk.getHKHistoryKline('00700', { adjust: 'hfq', startDate: '20241201', endDate: '20241220' }),
-        sdk.getHKHistoryKline('00700', { adjust: 'qfq', startDate: '20241201', endDate: '20241220' }),
-        sdk.getHKHistoryKline('00700', { adjust: '', startDate: '20241201', endDate: '20241220' }),
+        sdk.kline.hk('00700', { adjust: 'hfq', startDate: '20241201', endDate: '20241220' }),
+        sdk.kline.hk('00700', { adjust: 'qfq', startDate: '20241201', endDate: '20241220' }),
+        sdk.kline.hk('00700', { adjust: '', startDate: '20241201', endDate: '20241220' }),
       ]);
       expect(hfq.length).toBeGreaterThan(0);
       expect(qfq.length).toBeGreaterThan(0);
@@ -43,7 +43,7 @@ describe('Eastmoney - HK/US Kline', () => {
 
   describe('getUSHistoryKline', () => {
     it('should return 美股日K线数据 (纳斯达克)', async () => {
-      const res = await sdk.getUSHistoryKline('105.MSFT', {
+      const res = await sdk.kline.us('105.MSFT', {
         startDate: '20241201',
         endDate: '20241220',
       });
@@ -57,7 +57,7 @@ describe('Eastmoney - HK/US Kline', () => {
     });
 
     it('should return 美股周K线数据 (纽交所)', async () => {
-      const res = await sdk.getUSHistoryKline('106.BABA', {
+      const res = await sdk.kline.us('106.BABA', {
         period: 'weekly',
         startDate: '20241101',
         endDate: '20241231',
@@ -68,9 +68,9 @@ describe('Eastmoney - HK/US Kline', () => {
 
     it('should support different adjust types', async () => {
       const [hfq, qfq, noAdj] = await Promise.all([
-        sdk.getUSHistoryKline('105.AAPL', { adjust: 'hfq', startDate: '20241201', endDate: '20241220' }),
-        sdk.getUSHistoryKline('105.AAPL', { adjust: 'qfq', startDate: '20241201', endDate: '20241220' }),
-        sdk.getUSHistoryKline('105.AAPL', { adjust: '', startDate: '20241201', endDate: '20241220' }),
+        sdk.kline.us('105.AAPL', { adjust: 'hfq', startDate: '20241201', endDate: '20241220' }),
+        sdk.kline.us('105.AAPL', { adjust: 'qfq', startDate: '20241201', endDate: '20241220' }),
+        sdk.kline.us('105.AAPL', { adjust: '', startDate: '20241201', endDate: '20241220' }),
       ]);
       expect(hfq.length).toBeGreaterThan(0);
       expect(qfq.length).toBeGreaterThan(0);
@@ -78,7 +78,7 @@ describe('Eastmoney - HK/US Kline', () => {
     });
 
     it('should return 美股月K线数据', async () => {
-      const res = await sdk.getUSHistoryKline('105.TSLA', {
+      const res = await sdk.kline.us('105.TSLA', {
         period: 'monthly',
         startDate: '20240101',
         endDate: '20241231',

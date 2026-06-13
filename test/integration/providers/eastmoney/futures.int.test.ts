@@ -5,7 +5,7 @@ const sdk = new StockSDK();
 
 describe('Eastmoney - Futures Kline', () => {
   it('should return 螺纹钢主连日K线', async () => {
-    const res = await sdk.getFuturesKline('RBM', {
+    const res = await sdk.futures.kline('RBM', {
       startDate: '20250101',
       endDate: '20250228',
     });
@@ -23,7 +23,7 @@ describe('Eastmoney - Futures Kline', () => {
   });
 
   it('should return 具体合约 rb2510 日K线', async () => {
-    const res = await sdk.getFuturesKline('rb2510');
+    const res = await sdk.futures.kline('rb2510');
     expect(res.length).toBeGreaterThan(0);
     const k = res[0];
     expect(k.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
@@ -31,7 +31,7 @@ describe('Eastmoney - Futures Kline', () => {
   });
 
   it('should return 沪深300主连周K线', async () => {
-    const res = await sdk.getFuturesKline('IFM', {
+    const res = await sdk.futures.kline('IFM', {
       period: 'weekly',
       startDate: '20250101',
     });
@@ -39,14 +39,14 @@ describe('Eastmoney - Futures Kline', () => {
   });
 
   it('should return CZCE variety TAM', async () => {
-    const res = await sdk.getFuturesKline('TAM', {
+    const res = await sdk.futures.kline('TAM', {
       startDate: '20250101',
     });
     expect(res.length).toBeGreaterThan(0);
   });
 
   it('should return INE variety scM', async () => {
-    const res = await sdk.getFuturesKline('scM', {
+    const res = await sdk.futures.kline('scM', {
       startDate: '20250101',
     });
     expect(res.length).toBeGreaterThan(0);
@@ -55,7 +55,7 @@ describe('Eastmoney - Futures Kline', () => {
 
 describe('Eastmoney - Global Futures Spot', () => {
   it('should return global futures realtime quotes', async () => {
-    const res = await sdk.getGlobalFuturesSpot();
+    const res = await sdk.futures.globalSpot();
     expect(res.length).toBeGreaterThan(0);
     const q = res[0];
     expect(q.code).toBeTruthy();
@@ -68,7 +68,7 @@ describe('Eastmoney - Global Futures Spot', () => {
 
 describe('Eastmoney - Global Futures Kline', () => {
   it('should return COMEX铜连续 K线', async () => {
-    const res = await sdk.getGlobalFuturesKline('HG00Y', {
+    const res = await sdk.futures.globalKline('HG00Y', {
       startDate: '20250101',
     });
     expect(res.length).toBeGreaterThan(0);
@@ -80,21 +80,21 @@ describe('Eastmoney - Global Futures Kline', () => {
 
   it('should throw on unknown global variety', async () => {
     await expect(
-      sdk.getGlobalFuturesKline('XXXYYY')
+      sdk.futures.globalKline('XXXYYY')
     ).rejects.toThrow(/Unknown global futures variety/);
   });
 });
 
 describe('Eastmoney - Futures Inventory', () => {
   it('should return inventory symbol list', async () => {
-    const res = await sdk.getFuturesInventorySymbols();
+    const res = await sdk.futures.inventorySymbols();
     expect(res.length).toBeGreaterThan(0);
     expect(res[0].code).toBeTruthy();
     expect(res[0].name).toBeTruthy();
   });
 
   it('should return COMEX gold inventory', async () => {
-    const res = await sdk.getComexInventory('gold');
+    const res = await sdk.futures.comexInventory('gold');
     expect(res.length).toBeGreaterThan(0);
     const item = res[0];
     expect(item.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);

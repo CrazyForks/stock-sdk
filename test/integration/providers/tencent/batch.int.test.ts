@@ -6,7 +6,7 @@ const sdk = new StockSDK();
 describe('TencentStockSDK - Batch', () => {
   describe('batchRaw', () => {
     it('should return 批量混合查询原始结果', async () => {
-      const res = await sdk.batchRaw('sz000858,s_sh000001');
+      const res = await sdk.batch.raw('sz000858,s_sh000001');
       expect(res.length).toBe(2);
       expect(res[0].key).toContain('sz000858');
       expect(res[1].key).toContain('sh000001');
@@ -16,7 +16,7 @@ describe('TencentStockSDK - Batch', () => {
   describe('getAllQuotesByCodes', () => {
     it('should return 批量获取多只股票行情', async () => {
       const codes = ['sz000858', 'sh600000', 'sz000001'];
-      const res = await sdk.getAllQuotesByCodes(codes, {
+      const res = await sdk.batch.byCodes(codes, {
         batchSize: 2,
         concurrency: 2,
       });
@@ -29,7 +29,7 @@ describe('TencentStockSDK - Batch', () => {
       const codes = ['sz000858', 'sh600000', 'sz000001', 'sh600036'];
       const progressCalls: { completed: number; total: number }[] = [];
 
-      await sdk.getAllQuotesByCodes(codes, {
+      await sdk.batch.byCodes(codes, {
         batchSize: 2,
         concurrency: 1,
         onProgress: (completed, total) => {
@@ -43,44 +43,44 @@ describe('TencentStockSDK - Batch', () => {
     });
 
     it('should return empty for empty codes', async () => {
-      const res = await sdk.getAllQuotesByCodes([]);
+      const res = await sdk.batch.byCodes([]);
       expect(res).toEqual([]);
     });
 
     it('should throw for invalid batch options', async () => {
       await expect(
-        sdk.getAllQuotesByCodes(['sz000858'], { batchSize: 0 as any })
+        sdk.batch.byCodes(['sz000858'], { batchSize: 0 as any })
       ).rejects.toThrow(/batchSize/i);
       await expect(
-        sdk.getAllQuotesByCodes(['sz000858'], { concurrency: 0 as any })
+        sdk.batch.byCodes(['sz000858'], { concurrency: 0 as any })
       ).rejects.toThrow(/concurrency/i);
     });
   });
 
   describe('getAShareCodeList', () => {
     it('should return A股代码列表 from remote', async () => {
-      const codeList = await sdk.getAShareCodeList();
+      const codeList = await sdk.codes.cn();
       expect(Array.isArray(codeList)).toBe(true);
       expect(codeList.length).toBeGreaterThan(5000);
       expect(codeList[0]).toMatch(/^(sh|sz|bj)\d+$/);
     });
 
     it('should contain major stock codes', async () => {
-      const codeList = await sdk.getAShareCodeList();
+      const codeList = await sdk.codes.cn();
       expect(codeList).toContain('sz000858');
       expect(codeList).toContain('sh600000');
       expect(codeList).toContain('sh600519');
     });
 
     it('should return codes without exchange prefix using simple option', async () => {
-      const codeList = await sdk.getAShareCodeList({ simple: true });
+      const codeList = await sdk.codes.cn({ simple: true });
       expect(Array.isArray(codeList)).toBe(true);
       expect(codeList.length).toBeGreaterThan(5000);
       expect(codeList[0]).toMatch(/^\d+$/);
     });
 
     it('should filter by market: sh (上交所)', async () => {
-      const codeList = await sdk.getAShareCodeList({ market: 'sh' });
+      const codeList = await sdk.codes.cn({ market: 'sh' });
       expect(Array.isArray(codeList)).toBe(true);
       expect(codeList.length).toBeGreaterThan(100);
       // 所有代码应该以 sh 开头且是 6 开头的数字
@@ -90,7 +90,7 @@ describe('TencentStockSDK - Batch', () => {
     });
 
     it('should filter by market: sz (深交所)', async () => {
-      const codeList = await sdk.getAShareCodeList({ market: 'sz' });
+      const codeList = await sdk.codes.cn({ market: 'sz' });
       expect(Array.isArray(codeList)).toBe(true);
       expect(codeList.length).toBeGreaterThan(100);
       // 所有代码应该以 sz 开头且是 0 或 3 开头的数字
@@ -100,7 +100,7 @@ describe('TencentStockSDK - Batch', () => {
     });
 
     it('should filter by market: kc (科创板)', async () => {
-      const codeList = await sdk.getAShareCodeList({ market: 'kc' });
+      const codeList = await sdk.codes.cn({ market: 'kc' });
       expect(Array.isArray(codeList)).toBe(true);
       expect(codeList.length).toBeGreaterThan(50);
       // 所有代码应该以 sh688 开头
@@ -110,7 +110,7 @@ describe('TencentStockSDK - Batch', () => {
     });
 
     it('should filter by market: cy (创业板)', async () => {
-      const codeList = await sdk.getAShareCodeList({ market: 'cy' });
+      const codeList = await sdk.codes.cn({ market: 'cy' });
       expect(Array.isArray(codeList)).toBe(true);
       expect(codeList.length).toBeGreaterThan(50);
       // 所有代码应该以 sz30 开头
@@ -120,7 +120,7 @@ describe('TencentStockSDK - Batch', () => {
     });
 
     it('should combine simple and market options', async () => {
-      const codeList = await sdk.getAShareCodeList({ simple: true, market: 'kc' });
+      const codeList = await sdk.codes.cn({ simple: true, market: 'kc' });
       expect(Array.isArray(codeList)).toBe(true);
       expect(codeList.length).toBeGreaterThan(50);
       // 所有代码应该是 688 开头的纯数字
@@ -132,21 +132,21 @@ describe('TencentStockSDK - Batch', () => {
 
   describe('getUSCodeList', () => {
     it('should return 美股代码列表 from remote', async () => {
-      const codeList = await sdk.getUSCodeList();
+      const codeList = await sdk.codes.us();
       expect(Array.isArray(codeList)).toBe(true);
       expect(codeList.length).toBeGreaterThan(1000);
       expect(codeList[0]).toMatch(/^\d{3}\..+$/);
     });
 
     it('should return codes without market prefix using simple option', async () => {
-      const codeList = await sdk.getUSCodeList({ simple: true });
+      const codeList = await sdk.codes.us({ simple: true });
       expect(Array.isArray(codeList)).toBe(true);
       expect(codeList.length).toBeGreaterThan(1000);
       expect(codeList[0]).not.toMatch(/^\d{3}\./);
     });
 
     it('should filter by market: NASDAQ', async () => {
-      const codeList = await sdk.getUSCodeList({ market: 'NASDAQ' });
+      const codeList = await sdk.codes.us({ market: 'NASDAQ' });
       expect(Array.isArray(codeList)).toBe(true);
       expect(codeList.length).toBeGreaterThan(100);
       // 所有代码应该以 105. 开头
@@ -156,7 +156,7 @@ describe('TencentStockSDK - Batch', () => {
     });
 
     it('should filter by market: NYSE', async () => {
-      const codeList = await sdk.getUSCodeList({ market: 'NYSE' });
+      const codeList = await sdk.codes.us({ market: 'NYSE' });
       expect(Array.isArray(codeList)).toBe(true);
       expect(codeList.length).toBeGreaterThan(100);
       // 所有代码应该以 106. 开头
@@ -166,7 +166,7 @@ describe('TencentStockSDK - Batch', () => {
     });
 
     it('should filter by market: AMEX', async () => {
-      const codeList = await sdk.getUSCodeList({ market: 'AMEX' });
+      const codeList = await sdk.codes.us({ market: 'AMEX' });
       expect(Array.isArray(codeList)).toBe(true);
       expect(codeList.length).toBeGreaterThan(10);
       // 所有代码应该以 107. 开头
@@ -176,7 +176,7 @@ describe('TencentStockSDK - Batch', () => {
     });
 
     it('should combine simple and market options', async () => {
-      const codeList = await sdk.getUSCodeList({ simple: true, market: 'NASDAQ' });
+      const codeList = await sdk.codes.us({ simple: true, market: 'NASDAQ' });
       expect(Array.isArray(codeList)).toBe(true);
       expect(codeList.length).toBeGreaterThan(100);
       // 所有代码应该不包含前缀
@@ -188,16 +188,16 @@ describe('TencentStockSDK - Batch', () => {
 
   describe('getHKCodeList', () => {
     it('should return 港股代码列表 from remote', async () => {
-      const codeList = await sdk.getHKCodeList();
+      const codeList = await sdk.codes.hk();
       expect(Array.isArray(codeList)).toBe(true);
       expect(codeList.length).toBeGreaterThan(1000);
       expect(codeList[0]).toMatch(/^\d+$/);
     });
 
     it('should return codes that work with getHKQuotes', async () => {
-      const codeList = await sdk.getHKCodeList();
+      const codeList = await sdk.codes.hk();
       const testCodes = codeList.slice(0, 3);
-      const quotes = await sdk.getHKQuotes(testCodes);
+      const quotes = await sdk.quotes.hk(testCodes);
       expect(quotes.length).toBeGreaterThan(0);
       if (quotes.length > 0) {
         const q = quotes[0];
@@ -212,9 +212,9 @@ describe('TencentStockSDK - Batch', () => {
 
   describe('getUSCodeList codes work with getUSQuotes', () => {
     it('should return codes that work with getUSQuotes', async () => {
-      const codeList = await sdk.getUSCodeList({ simple: true });
+      const codeList = await sdk.codes.us({ simple: true });
       const testCodes = codeList.slice(0, 5);
-      const quotes = await sdk.getUSQuotes(testCodes);
+      const quotes = await sdk.quotes.us(testCodes);
       expect(quotes.length).toBeGreaterThan(0);
       if (quotes.length > 0) {
         const q = quotes[0];

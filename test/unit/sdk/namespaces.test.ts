@@ -1,6 +1,6 @@
 /**
  * 命名空间 API（v2 A3）结构测试。
- * 验证 sdk.<ns>.<method> 全部挂载且委托到对应 service（旧扁平方法仍保留）。
+ * 验证 sdk.<ns>.<method> 全部挂载且委托到对应 service（v1 扁平方法已移除）。
  */
 import { describe, it, expect } from 'vitest';
 import { StockSDK } from '../../../src/sdk';
@@ -69,11 +69,15 @@ describe('namespace API — 二级命名空间', () => {
   });
 });
 
-describe('namespace API — 与旧扁平方法委托一致', () => {
-  it('命名空间方法与旧方法指向同一 service 行为（结构层面均为函数）', () => {
-    // 旧扁平方法仍保留（向后兼容，单轨硬切前的过渡）
-    expect(typeof sdk.getFullQuotes).toBe('function');
-    expect(typeof sdk.getETFOptionDailyKline).toBe('function');
+describe('namespace API — v1 扁平方法已移除(F28 单轨硬切)', () => {
+  it('sdk.getXxx 不再存在,仅保留顶层 search', () => {
+    const legacy = sdk as unknown as Record<string, unknown>;
+    expect(legacy.getFullQuotes).toBeUndefined();
+    expect(legacy.getHistoryKline).toBeUndefined();
+    expect(legacy.getKlineWithIndicators).toBeUndefined();
+    expect(legacy.getETFOptionDailyKline).toBeUndefined();
+    expect(legacy.isTradingDay).toBeUndefined();
+    expect(typeof sdk.search).toBe('function');
   });
 });
 

@@ -8,7 +8,7 @@ const sdk = new StockSDK();
 
 describe('Eastmoney - Northbound Minute', () => {
   it('应获取北向资金分时数据', async () => {
-    const points = await sdk.getNorthboundMinute('north');
+    const points = await sdk.northbound.minute('north');
     // 非交易日可能为空，所以只验证类型
     expect(Array.isArray(points)).toBe(true);
 
@@ -20,14 +20,14 @@ describe('Eastmoney - Northbound Minute', () => {
   });
 
   it('应获取南向资金分时数据', async () => {
-    const points = await sdk.getNorthboundMinute('south');
+    const points = await sdk.northbound.minute('south');
     expect(Array.isArray(points)).toBe(true);
   });
 });
 
 describe('Eastmoney - Northbound Flow Summary', () => {
   it('应获取沪深港通市场资金流向汇总', async () => {
-    const summary = await sdk.getNorthboundFlowSummary();
+    const summary = await sdk.northbound.summary();
     expect(summary.length).toBeGreaterThan(0);
     expect(summary[0].boardName).toBeTruthy();
   });
@@ -35,7 +35,7 @@ describe('Eastmoney - Northbound Flow Summary', () => {
 
 describe('Eastmoney - Northbound Holding Rank', () => {
   it('应获取北向持股 5 日排行（全市场）', async () => {
-    const rank = await sdk.getNorthboundHoldingRank({
+    const rank = await sdk.northbound.holdingRank({
       market: 'all',
       period: '5day',
     });

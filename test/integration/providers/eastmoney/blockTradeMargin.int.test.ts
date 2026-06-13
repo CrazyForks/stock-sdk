@@ -8,7 +8,7 @@ const sdk = new StockSDK();
 
 describe('Eastmoney - Block Trade', () => {
   it('应获取大宗交易市场每日总览', async () => {
-    const stat = await sdk.getBlockTradeMarketStat();
+    const stat = await sdk.blockTrade.marketStat();
     expect(Array.isArray(stat)).toBe(true);
     expect(stat.length).toBeGreaterThan(0);
 
@@ -17,7 +17,7 @@ describe('Eastmoney - Block Trade', () => {
   });
 
   it('应获取大宗交易明细（指定日期范围）', async () => {
-    const list = await sdk.getBlockTradeDetail({
+    const list = await sdk.blockTrade.detail({
       startDate: '2024-01-01',
       endDate: '2024-01-31',
     });
@@ -30,7 +30,7 @@ describe('Eastmoney - Block Trade', () => {
 
 describe('Eastmoney - Margin Trading', () => {
   it('应获取融资融券账户统计', async () => {
-    const margin = await sdk.getMarginAccountInfo();
+    const margin = await sdk.margin.accountInfo();
     expect(Array.isArray(margin)).toBe(true);
     expect(margin.length).toBeGreaterThan(0);
 
@@ -40,7 +40,7 @@ describe('Eastmoney - Margin Trading', () => {
   });
 
   it('应获取融资融券标的明细', async () => {
-    const targets = await sdk.getMarginTargetList();
+    const targets = await sdk.margin.targetList();
     expect(Array.isArray(targets)).toBe(true);
     if (targets.length > 0) {
       expect(targets[0].code).toBeTruthy();

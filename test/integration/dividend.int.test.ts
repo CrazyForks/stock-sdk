@@ -8,7 +8,7 @@ describe('getDividendDetail 集成测试', () => {
   const sdk = new StockSDK();
 
   it('应获取贵州茅台的分红历史（完整字段）', async () => {
-    const dividends = await sdk.getDividendDetail('600519');
+    const dividends = await sdk.reference.dividendDetail('600519');
 
     expect(dividends).toBeInstanceOf(Array);
     expect(dividends.length).toBeGreaterThan(0);
@@ -64,7 +64,7 @@ describe('getDividendDetail 集成测试', () => {
   });
 
   it('应支持带交易所前缀的股票代码', async () => {
-    const dividends = await sdk.getDividendDetail('sh600519');
+    const dividends = await sdk.reference.dividendDetail('sh600519');
 
     expect(dividends).toBeInstanceOf(Array);
     expect(dividends.length).toBeGreaterThan(0);
@@ -72,7 +72,7 @@ describe('getDividendDetail 集成测试', () => {
   });
 
   it('应获取深市股票的分红历史', async () => {
-    const dividends = await sdk.getDividendDetail('000858');
+    const dividends = await sdk.reference.dividendDetail('000858');
 
     expect(dividends).toBeInstanceOf(Array);
     expect(dividends.length).toBeGreaterThan(0);
@@ -85,7 +85,7 @@ describe('getDividendDetail 集成测试', () => {
   });
 
   it('应获取创业板股票的分红历史', async () => {
-    const dividends = await sdk.getDividendDetail('300073');
+    const dividends = await sdk.reference.dividendDetail('300073');
 
     expect(dividends).toBeInstanceOf(Array);
     // 创业板可能没有分红历史，只验证结构正确
@@ -97,7 +97,7 @@ describe('getDividendDetail 集成测试', () => {
   });
 
   it('不存在的股票代码应返回空数组', async () => {
-    const dividends = await sdk.getDividendDetail('999999');
+    const dividends = await sdk.reference.dividendDetail('999999');
 
     expect(dividends).toBeInstanceOf(Array);
     expect(dividends.length).toBe(0);

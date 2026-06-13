@@ -8,7 +8,7 @@ const sdk = new StockSDK({ retry: { maxRetries: 2 } });
 
 describe('Index Option (CFFEX) - Integration', () => {
   it('should fetch index option kline for a CFFEX contract', async () => {
-    const klines = await sdk.getIndexOptionKline('io2506C4000');
+    const klines = await sdk.options.index.kline('io2506C4000');
     expect(Array.isArray(klines)).toBe(true);
     if (klines.length > 0) {
       expect(klines[0]).toHaveProperty('date');
@@ -21,7 +21,7 @@ describe('Index Option (CFFEX) - Integration', () => {
 
 describe('ETF Option (SSE) - Integration', () => {
   it('should fetch ETF option months for 50ETF', async () => {
-    const info = await sdk.getETFOptionMonths('50ETF');
+    const info = await sdk.options.etf.months('50ETF');
     expect(info).toHaveProperty('months');
     expect(Array.isArray(info.months)).toBe(true);
     expect(info.months.length).toBeGreaterThan(0);
@@ -29,9 +29,9 @@ describe('ETF Option (SSE) - Integration', () => {
   });
 
   it('should fetch ETF option expire day', async () => {
-    const months = await sdk.getETFOptionMonths('50ETF');
+    const months = await sdk.options.etf.months('50ETF');
     if (months.months.length > 0) {
-      const info = await sdk.getETFOptionExpireDay('50ETF', months.months[0]);
+      const info = await sdk.options.etf.expireDay('50ETF', months.months[0]);
       expect(info).toHaveProperty('expireDay');
       expect(info).toHaveProperty('remainderDays');
       expect(typeof info.remainderDays).toBe('number');
@@ -41,7 +41,7 @@ describe('ETF Option (SSE) - Integration', () => {
 
 describe('CFFEX Option Quotes (Eastmoney) - Integration', () => {
   it('should fetch all CFFEX option quotes', async () => {
-    const quotes = await sdk.getCFFEXOptionQuotes();
+    const quotes = await sdk.options.cffex.quotes();
     expect(Array.isArray(quotes)).toBe(true);
     expect(quotes.length).toBeGreaterThan(0);
     expect(quotes[0]).toHaveProperty('code');
@@ -54,7 +54,7 @@ describe('CFFEX Option Quotes (Eastmoney) - Integration', () => {
 
 describe('Commodity Option - Integration', () => {
   it('should fetch commodity option kline for a gold contract', async () => {
-    const klines = await sdk.getCommodityOptionKline('au2506C660');
+    const klines = await sdk.options.commodity.kline('au2506C660');
     expect(Array.isArray(klines)).toBe(true);
     if (klines.length > 0) {
       expect(klines[0]).toHaveProperty('date');

@@ -8,7 +8,7 @@ The Playground is being wired up alongside the v2 SDK implementation. The v1 doc
 
 ```ts
 // v1 (old)
-const [quote] = await sdk.getFullQuotes(['sh600519'])
+const [quote] = await sdk.quotes.cn(['sh600519'])
 
 // v2 (the style the Playground will use)
 const [quote] = await sdk.quotes.cn(['sh600519'])
