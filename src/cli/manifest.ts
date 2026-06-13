@@ -7,7 +7,7 @@
  * 2. ALIAS_COMMANDS —— 第 1 层高频快捷命令（带自定义 `invoke`，如 `quote` 的市场识别）。
  */
 import { normalizeSymbol, toTencentSymbol } from '../symbols';
-import { toNumberArray } from './dispatch';
+import { toNumberArray, invokeMethod } from './dispatch';
 import type { StockSDK } from '../sdk';
 import { CliUsageError } from './errors';
 import type {
@@ -198,7 +198,7 @@ const NS_DEFS: NsDef[] = [
     summary: '北向/南向分时(--direction north|south 或位置参数)',
     pos: [{ name: 'direction', enum: ['north', 'south'] }],
     opts: [DIRECTION_OPT],
-    invoke: (sdk, ctx) => callMethod(sdk, ['northbound', 'minute'], [readDirection(ctx)]),
+    invoke: (sdk, ctx) => invokeMethod(sdk, ['northbound', 'minute'], [readDirection(ctx)]),
   },
   { path: 'northbound.summary', shape: 'none', summary: '沪深港通资金汇总' },
   { path: 'northbound.holdingRank', shape: 'options', summary: '北向持股排行' },
@@ -212,7 +212,7 @@ const NS_DEFS: NsDef[] = [
       const opts: Record<string, unknown> = {};
       if (ctx.options.start !== undefined) opts.startDate = ctx.options.start;
       if (ctx.options.end !== undefined) opts.endDate = ctx.options.end;
-      return callMethod(sdk, ['northbound', 'history'], [readDirection(ctx), opts]);
+      return invokeMethod(sdk, ['northbound', 'history'], [readDirection(ctx), opts]);
     },
   },
   { path: 'northbound.individual', shape: 'symbol+options', summary: '个股北向持仓历史', pos: SYMBOL },
@@ -295,15 +295,6 @@ function detectMarketTag(symbol: string): 'a' | 'hk' | 'us' {
   }
 }
 
-/** 动态调用命名空间方法（CLI 参数本就是动态的，统一在此做一次受控断言）。 */
-function callMethod(sdk: StockSDK, path: string[], args: unknown[]): Promise<unknown> {
-  const target = path.reduce<unknown>(
-    (o, k) => (o as Record<string, unknown>)[k],
-    sdk
-  );
-  return Promise.resolve((target as (...a: unknown[]) => unknown)(...args));
-}
-
 /** CLI 市场标签 → SDK Market。 */
 function tagToMarket(tag: 'a' | 'hk' | 'us'): 'CN' | 'HK' | 'US' {
   return tag === 'hk' ? 'HK' : tag === 'us' ? 'US' : 'CN';
@@ -375,7 +366,7 @@ function invokeWithIndicators(sdk: StockSDK, ctx: InvokeContext): Promise<unknow
   if (ctx.options.end !== undefined) opts.endDate = ctx.options.end;
   if (ctx.options.market !== undefined) opts.market = ctx.options.market;
   opts.indicators = buildIndicatorOptions(ctx.options);
-  return callMethod(sdk, ['kline', 'withIndicators'], [symbol, opts]);
+  return invokeMethod(sdk, ['kline', 'withIndicators'], [symbol, opts]);
 }
 
 export const ALIAS_COMMANDS: CommandSpec[] = [
@@ -442,7 +433,7 @@ export const ALIAS_COMMANDS: CommandSpec[] = [
       const market = resolveForcedMarket(ctx.options.market) ?? detectMarketTag(symbol);
       const opts = klineOptsFromCtx(ctx);
       const method = market === 'hk' ? 'hk' : market === 'us' ? 'us' : 'cn';
-      return callMethod(sdk, ['kline', method], [symbol, opts]);
+      return invokeMethod(sdk, ['kline', method], [symbol, opts]);
     },
   },
   {
@@ -464,7 +455,7 @@ export const ALIAS_COMMANDS: CommandSpec[] = [
         }
         opts.ndays = Number(ctx.options.ndays);
       }
-      return callMethod(sdk, ['kline', method], [symbol, opts]);
+      return invokeMethod(sdk, ['kline', method], [symbol, opts]);
     },
   },
   {
@@ -524,9 +515,9 @@ export const ALIAS_COMMANDS: CommandSpec[] = [
       }
       switch (market) {
         case 'a':
-          return callMethod(sdk, ['codes', 'cn'], [opts]);
+          return invokeMethod(sdk, ['codes', 'cn'], [opts]);
         case 'us':
-          return callMethod(sdk, ['codes', 'us'], [opts]);
+          return invokeMethod(sdk, ['codes', 'us'], [opts]);
         case 'hk':
           return sdk.codes.hk();
         case 'fund':
@@ -590,26 +581,17 @@ export const ALIAS_COMMANDS: CommandSpec[] = [
           throw new CliUsageError('--args 不是合法 JSON', '示例: --args \'[["sh600519"]]\'');
         }
       }
-      // 防原型链逃逸:禁止 __proto__/prototype/constructor 与 Object.prototype 上的继承成员
-      // (否则 `call toString` / `call constructor` 会命中内置方法并产生困惑输出/报错)。
-      const DANGEROUS = new Set(['__proto__', 'prototype', 'constructor']);
-      let target: unknown = sdk;
-      for (const k of path.split('.')) {
-        if (
-          DANGEROUS.has(k) ||
-          k in Object.prototype ||
-          target == null ||
-          (typeof target !== 'object' && typeof target !== 'function')
-        ) {
-          target = undefined;
-          break;
-        }
-        target = (target as Record<string, unknown>)[k];
+      // 白名单:只放行 manifest 声明的方法路径。此前用 DANGEROUS 黑名单走原型链,
+      // 运行时可达 sdk 的内部成员(client/service 字段)且绕过全部选项校验;
+      // 且旧实现无绑定调用(target(...args)),顶层原型方法(search)丢 this 直接崩溃。
+      const allowed = new Set(allMethodPaths());
+      if (!allowed.has(path)) {
+        throw new CliUsageError(
+          `未知方法: ${path}`,
+          '形如 quotes.cn / kline.cn(仅命名空间方法,见 stock-sdk --help)'
+        );
       }
-      if (typeof target !== 'function') {
-        throw new CliUsageError(`未知方法: ${path}`, '形如 quotes.cn / kline.cn');
-      }
-      return Promise.resolve((target as (...a: unknown[]) => unknown)(...args));
+      return invokeMethod(sdk, path.split('.'), args);
     },
   },
 ];

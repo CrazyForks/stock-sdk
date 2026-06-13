@@ -126,7 +126,7 @@ function normalizePositional(p: PositionalSpec, value: string): string {
   return v;
 }
 
-function invokeMethod(sdk: StockSDK, path: string[], args: unknown[]): Promise<unknown> {
+export function invokeMethod(sdk: StockSDK, path: string[], args: unknown[]): Promise<unknown> {
   let parent: unknown = undefined;
   const target = path.reduce<unknown>((o, k) => {
     if (o == null || typeof o !== 'object') return undefined;
