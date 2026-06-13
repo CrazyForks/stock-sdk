@@ -72,14 +72,12 @@ export interface RequestHooks {
   trace?(event: RequestTraceEvent, ctx: RequestLifecycleContext): void;
 }
 
-/** 内部 timeout abort 的标记 reason，用于区分「超时」与「外部取消」 */
-const TIMEOUT_ABORT_REASON = Symbol('stock-sdk:timeout');
-
 /**
  * 判断 error 是否「形似 abort」：标准 AbortError(DOMException 或 Error)，
  * 或 undici 连接被 abort 时抛的 TypeError，其真因(error.cause)是 AbortError。
- * 用于在外部 signal 已取消时，仅把「确实由取消导致」的 error 归为 ABORTED，
- * 不误伤 try 块里主动抛出的 HttpError / SdkError(PARSE_ERROR 等)业务错误。
+ * 兜底用：自定义 fetchImpl 可能不透传 signal.reason 而抛自建 AbortError，
+ * 此时按 reason 同一性溯源会落空，靠形状判定补救；
+ * 同时不误伤 try 块里主动抛出的 HttpError / SdkError(PARSE_ERROR 等)业务错误。
  */
 function isAbortShapedError(error: unknown): boolean {
   if (error instanceof DOMException && error.name === 'AbortError') {
@@ -420,8 +418,17 @@ export class RequestClient {
     }
 
     const timeoutController = new AbortController();
+    // 超时 reason 必须是 DOMException(AbortError)：fetch 会把 signal.reason 原样作为
+    // 拒绝值抛出，若用 Symbol/裸值，normalizeRequestError 无法识别 → 超时被错分类为
+    // NETWORK_ERROR(绕过 retryOnTimeout、hooks/主机健康记错码)。
+    // 每个请求新建实例：attachErrorMetadata 会往错误上写 provider/url，共享实例会被
+    // 首个超时请求的上下文污染。
+    const timeoutReason = new DOMException(
+      `Request timed out after ${state.policy.timeout}ms`,
+      'AbortError'
+    );
     const timeoutId = setTimeout(
-      () => timeoutController.abort(TIMEOUT_ABORT_REASON),
+      () => timeoutController.abort(timeoutReason),
       state.policy.timeout
     );
     // 三源合并：内部 timeout + per-call signal + client 级 signal 都能取消该请求
@@ -497,23 +504,37 @@ export class RequestClient {
           return (await resp.text()) as T;
       }
     } catch (error) {
-      // 外部 signal(per-call 或 client 级)主动取消 → ABORTED（区别于内部超时
-      // TIMEOUT，后者交给 normalizeRequestError 把 AbortError 归一化为 TIMEOUT）。
-      const externalAborted =
-        (perCall.signal?.aborted &&
-          perCall.signal.reason !== TIMEOUT_ABORT_REASON) ||
-        (this.clientSignal?.aborted &&
-          this.clientSignal.reason !== TIMEOUT_ABORT_REASON);
-      // 仅当「外部 signal 已取消」且「error 形似 abort」才归 ABORTED：
-      // clientSignal.aborted 是持久状态，只看它会把该 client 后续真实的 HttpError /
-      // PARSE_ERROR 误掩盖成 AbortedError(丢失 status/cause、误导 fallback 与熔断器)。
-      // isAbortShapedError 同时兼容标准 AbortError 与 undici 的 TypeError: terminated(cause)。
-      if (externalAborted && isAbortShapedError(error)) {
-        throw new AbortedError(
-          'Request aborted by external signal',
-          provider,
-          url
+      // fetch 以 signal.reason【原样】作为拒绝值（undici 偶见把 reason 挂在 cause 上），
+      // 而 reason 可以是任意值（string / 自定义 Error / DOMException），不能只靠错误
+      // 形状分类。优先按「reason 同一性」把错误溯源到具体 signal：
+      const matchesReason = (s: AbortSignal | undefined): boolean => {
+        if (!s?.aborted) return false;
+        if (error === s.reason) return true;
+        return (
+          error instanceof Error &&
+          (error as { cause?: unknown }).cause === s.reason
         );
+      };
+      // 内部超时命中 → 保持原错误（DOMException AbortError），由 normalizeRequestError
+      // 归一化为 TIMEOUT；与外部取消同时发生时，以先触发者（即 error 的来源）为准。
+      if (!matchesReason(timeoutController.signal)) {
+        // 外部取消（per-call 或 client 级）→ ABORTED，无论 reason 形状。
+        // 形状判定仅作兜底：自定义 fetchImpl 可能不透传 reason 而抛自建 AbortError；
+        // 同时要求「外部 signal 确已取消」，避免把该 client 后续真实的 HttpError /
+        // PARSE_ERROR 误掩盖成 AbortedError(丢失 status/cause、误导 fallback 与熔断器)。
+        const externalAborted =
+          perCall.signal?.aborted || this.clientSignal?.aborted;
+        if (
+          matchesReason(perCall.signal) ||
+          matchesReason(this.clientSignal) ||
+          (externalAborted && isAbortShapedError(error))
+        ) {
+          throw new AbortedError(
+            'Request aborted by external signal',
+            provider,
+            url
+          );
+        }
       }
       throw error;
     } finally {
@@ -579,7 +600,12 @@ export class RequestClient {
           timeout: state.policy.timeout,
         });
         lastError = normalized;
-        this.fallbackManager.recordFailure(candidateUrl, normalized);
+        // 外部取消不是上游故障：不计入 host 健康（避免单次取消把 host 打进 30s 冷却）、
+        // 不喂熔断器（避免连续取消几次就把 breaker 打开拒绝后续正常请求）。
+        const isExternalAbort = getSdkErrorCode(normalized) === 'ABORTED';
+        if (!isExternalAbort) {
+          this.fallbackManager.recordFailure(candidateUrl, normalized);
+        }
 
         const shouldTryNextHost =
           index < candidateUrls.length - 1 &&
@@ -598,7 +624,9 @@ export class RequestClient {
           continue;
         }
 
-        state.circuitBreaker?.recordFailure();
+        if (!isExternalAbort) {
+          state.circuitBreaker?.recordFailure();
+        }
         throw this.toSdkError(normalized);
       }
     }
