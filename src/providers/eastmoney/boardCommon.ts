@@ -12,7 +12,7 @@ import {
   getPeriodCode,
   getAdjustCode,
 } from '../../core';
-import { NotFoundError } from '../../core/errors';
+import { NotFoundError, UpstreamEmptyError } from '../../core/errors';
 import { toNumberSafe } from '../../core/parser';
 import {
   fetchPaginatedData,
@@ -102,6 +102,14 @@ export function createBoardCodeCache(config: BoardTypeConfig) {
 
       const nameCodeMap = await cache.getOrFetch('name-code-map', async () => {
         const boards = await listFn(client);
+        // 空板块列表必为上游异常：抛错且【不落缓存】，避免空 map 被缓存 1 小时、
+        // 期间所有按名称的板块查询都 NotFoundError
+        if (boards.length === 0) {
+          throw new UpstreamEmptyError(
+            `${config.errorPrefix}: 板块列表接口返回空数据`,
+            'eastmoney'
+          );
+        }
         return Object.fromEntries(boards.map((board) => [board.name, board.code]));
       });
 

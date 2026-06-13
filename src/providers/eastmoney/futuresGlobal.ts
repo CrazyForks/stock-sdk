@@ -69,6 +69,8 @@ export async function getGlobalFuturesSpot(
   const allData: GlobalFuturesQuote[] = [];
   let pageIndex = 0;
   let total = 0;
+  // 兜底页数上限：防止 total 异常巨大时长时间翻页
+  const MAX_PAGES = 1000;
 
   do {
     const params = new URLSearchParams({
@@ -96,8 +98,16 @@ export async function getGlobalFuturesSpot(
 
     const items = json.list.map(mapFutsseItem);
     allData.push(...items);
+
+    // 空页保护（对齐 utils.ts fetchPaginatedData）：服务端高报 total 时，越界页
+    // 返回空数组（能通过 Array.isArray 检查），allData 不再增长而循环条件恒成立，
+    // 会无限翻页。一旦某页无数据即视为已到结尾。
+    if (items.length === 0) {
+      break;
+    }
+
     pageIndex++;
-  } while (allData.length < total);
+  } while (allData.length < total && pageIndex < MAX_PAGES);
 
   return allData;
 }

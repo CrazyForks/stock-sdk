@@ -50,6 +50,22 @@ export function assertAdjustType(
 }
 
 /**
+ * 校验北向资金方向参数。
+ * TS 类型只防编译期；MCP/CLI 等运行时入口可传任意字符串，此前非 'south' 的
+ * 垃圾值会被静默当作 'north' 返回错误方向的数据。
+ */
+export function assertNorthboundDirection(
+  direction: string
+): asserts direction is 'north' | 'south' {
+  if (direction !== 'north' && direction !== 'south') {
+    throw new InvalidArgumentError("direction must be one of: 'north', 'south'", {
+      argument: 'direction',
+      value: direction,
+    });
+  }
+}
+
+/**
  * 将数组分割成指定大小的块
  */
 export function chunkArray<T>(array: T[], chunkSize: number): T[][] {

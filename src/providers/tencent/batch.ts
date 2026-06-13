@@ -8,6 +8,7 @@ import {
   HK_LIST_URL,
   FUND_LIST_URL,
   getSharedCache,
+  UpstreamEmptyError,
   chunkArray,
   asyncPool,
   assertPositiveInteger,
@@ -42,7 +43,18 @@ async function fetchJsonCodeList(
     const data = await client.get<StockListResponse>(url, {
       responseType: 'json',
     });
-    return data?.list || [];
+    const list = data?.list;
+    // 全市场代码列表不可能为空：success:false / 缺 list / 空数组均视为上游异常，
+    // 抛错且【不落缓存】。此前 {success:false} 会把 [] 缓存 6 小时，
+    // codes.* / batch.* 全程静默返回空结果。
+    if (data?.success === false || !Array.isArray(list) || list.length === 0) {
+      throw new UpstreamEmptyError(
+        `代码列表接口返回空数据: ${cacheKey}`,
+        'tencent',
+        url
+      );
+    }
+    return list;
   });
 }
 
@@ -408,8 +420,17 @@ export async function getFundCodeList(
     const text = await client.get<string>(FUND_LIST_URL, {
       responseType: 'text',
     });
-    const parts = text.split(',');
-    return parts.slice(1).filter((code) => code.trim());
+    const parts = (text ?? '').split(',');
+    const list = parts.slice(1).filter((code) => code.trim());
+    // 与 fetchJsonCodeList 同理：空列表必为上游异常，抛错且不落缓存
+    if (list.length === 0) {
+      throw new UpstreamEmptyError(
+        '基金代码列表接口返回空数据',
+        'tencent',
+        FUND_LIST_URL
+      );
+    }
+    return list;
   });
 
   return codes.slice();

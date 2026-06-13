@@ -55,6 +55,7 @@ export {
   assertKlinePeriod,
   assertMinutePeriod,
   assertAdjustType,
+  assertNorthboundDirection,
   getPeriodCode,
   getAdjustCode,
 } from './utils';

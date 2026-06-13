@@ -6,6 +6,7 @@
  */
 import {
   type RequestClient,
+  assertNorthboundDirection,
   EM_NORTHBOUND_MINUTE_URL,
   EM_DATA_TOKEN,
   toNumber,
@@ -107,6 +108,9 @@ export async function getNorthboundMinute(
   client: RequestClient,
   direction: NorthboundDirection = 'north'
 ): Promise<NorthboundMinuteItem[]> {
+  // TS 类型只防编译期；MCP/CLI 运行时入口可传任意字符串，
+  // 此前非 'south' 的垃圾值会被静默当作 'north' 返回错误方向的数据
+  assertNorthboundDirection(direction);
   const params = new URLSearchParams({
     fields1: 'f1,f2,f3,f4',
     fields2: 'f51,f54,f52,f58,f53,f62,f56,f57,f60,f61',
@@ -246,6 +250,7 @@ export async function getNorthboundHistory(
   direction: NorthboundDirection = 'north',
   options: NorthboundHistoryOptions = {}
 ): Promise<NorthboundHistoryItem[]> {
+  assertNorthboundDirection(direction);
   const { startDate, endDate } = options;
   // MUTUAL_TYPE 编码：001 沪股通, 003 深股通, 005 港股通(沪), 007 港股通(深)
   // 对外简化：北向 = 沪股通+深股通合计；南向 = 港股通(沪)+(深) 合计
