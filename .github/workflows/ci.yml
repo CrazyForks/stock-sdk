@@ -40,3 +40,9 @@ jobs:
 
       - name: Documentation consistency
         run: pnpm docs:check
+
+      # 跑一次完整 vitepress 构建，确保文档站能在干净（pnpm 严格）安装下构建。
+      # 否则 docs-only 的依赖问题（如 Playground 引用的 shiki 幽灵依赖）只有合并后
+      # 的 docs.yml 部署才会暴露，PR 阶段拦不住。
+      - name: Build docs site
+        run: pnpm build:pages

@@ -36,32 +36,74 @@
       }
     },
     "./indicators": {
-      "import": { "types": "./dist/indicators.d.ts", "default": "./dist/indicators.js" },
-      "require": { "types": "./dist/indicators.d.cts", "default": "./dist/indicators.cjs" }
+      "import": {
+        "types": "./dist/indicators.d.ts",
+        "default": "./dist/indicators.js"
+      },
+      "require": {
+        "types": "./dist/indicators.d.cts",
+        "default": "./dist/indicators.cjs"
+      }
     },
     "./symbols": {
-      "import": { "types": "./dist/symbols.d.ts", "default": "./dist/symbols.js" },
-      "require": { "types": "./dist/symbols.d.cts", "default": "./dist/symbols.cjs" }
+      "import": {
+        "types": "./dist/symbols.d.ts",
+        "default": "./dist/symbols.js"
+      },
+      "require": {
+        "types": "./dist/symbols.d.cts",
+        "default": "./dist/symbols.cjs"
+      }
     },
     "./signals": {
-      "import": { "types": "./dist/signals.d.ts", "default": "./dist/signals.js" },
-      "require": { "types": "./dist/signals.d.cts", "default": "./dist/signals.cjs" }
+      "import": {
+        "types": "./dist/signals.d.ts",
+        "default": "./dist/signals.js"
+      },
+      "require": {
+        "types": "./dist/signals.d.cts",
+        "default": "./dist/signals.cjs"
+      }
     },
     "./screener": {
-      "import": { "types": "./dist/screener.d.ts", "default": "./dist/screener.js" },
-      "require": { "types": "./dist/screener.d.cts", "default": "./dist/screener.cjs" }
+      "import": {
+        "types": "./dist/screener.d.ts",
+        "default": "./dist/screener.js"
+      },
+      "require": {
+        "types": "./dist/screener.d.cts",
+        "default": "./dist/screener.cjs"
+      }
     },
     "./cache": {
-      "import": { "types": "./dist/cache.d.ts", "default": "./dist/cache.js" },
-      "require": { "types": "./dist/cache.d.cts", "default": "./dist/cache.cjs" }
+      "import": {
+        "types": "./dist/cache.d.ts",
+        "default": "./dist/cache.js"
+      },
+      "require": {
+        "types": "./dist/cache.d.cts",
+        "default": "./dist/cache.cjs"
+      }
     },
     "./errors": {
-      "import": { "types": "./dist/errors.d.ts", "default": "./dist/errors.js" },
-      "require": { "types": "./dist/errors.d.cts", "default": "./dist/errors.cjs" }
+      "import": {
+        "types": "./dist/errors.d.ts",
+        "default": "./dist/errors.js"
+      },
+      "require": {
+        "types": "./dist/errors.d.cts",
+        "default": "./dist/errors.cjs"
+      }
     },
     "./mcp": {
-      "import": { "types": "./dist/mcp.d.ts", "default": "./dist/mcp.js" },
-      "require": { "types": "./dist/mcp.d.cts", "default": "./dist/mcp.cjs" }
+      "import": {
+        "types": "./dist/mcp.d.ts",
+        "default": "./dist/mcp.js"
+      },
+      "require": {
+        "types": "./dist/mcp.d.cts",
+        "default": "./dist/mcp.cjs"
+      }
     },
     "./package.json": "./package.json"
   },
@@ -110,6 +152,7 @@
     "@vitest/coverage-v8": "^4.0.16",
     "msw": "^2.10.4",
     "playwright": "^1.58.2",
+    "shiki": "^2.5.0",
     "tsup": "^8.3.5",
     "typescript": "^5.9.3",
     "vitepress": "^1.6.4",
