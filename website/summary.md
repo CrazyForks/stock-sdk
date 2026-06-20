@@ -172,5 +172,5 @@
 - [错误处理与重试](/guide/retry)
 - [请求治理](/guide/request-governance)
 - [期货与期权](/guide/futures-options)
-- [分红与交易日历](/guide/dividend-calendar)
+- [复权说明](/guide/dividend-adjustment)
 - [API 总览](/api/)

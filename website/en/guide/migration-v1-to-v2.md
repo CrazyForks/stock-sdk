@@ -128,7 +128,7 @@ if (q.timestamp === null) { /* invalid */ }
 
 ### Quote discriminated union
 
-Quote types collapse from "separate interfaces" into a union `Quote` discriminated by `assetType`. Old type names (`FullQuote` / `HKUSHistoryKline`, etc.) may remain during beta to protect migration, but new code should target `Quote`. Callers narrow with `switch`:
+Quote types collapse from "separate interfaces" into a union `Quote` discriminated by `assetType`. Old type names (`FullQuote` / `HKUSHistoryKline`, etc.) may remain as compatibility aliases, but new code should target `Quote`. Callers narrow with `switch`:
 
 ```ts
 import type { Quote } from 'stock-sdk';
@@ -240,7 +240,7 @@ try {
 
 ## 5. Other cleanups
 
-- v1 flat methods are removed. Some legacy fields / type names may remain during beta to protect migration; the final source of truth is the type definitions.
+- v1 flat methods are removed. Some legacy fields / type names may remain as compatibility aliases; the final source of truth is the type definitions.
 - Old `boolean` signatures removed: `getAShareCodeList(boolean)` / `getUSCodeList(boolean)` keep only the options-object signature (v2 `codes.cn(opts)` / `codes.us(opts)`).
 - Node baseline stays at `>=18` (`AbortSignal.any` with a runtime fallback).
 - New subpath exports: `stock-sdk/{indicators,symbols,signals,screener,cache,errors}`.

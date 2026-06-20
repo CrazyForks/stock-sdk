@@ -128,7 +128,7 @@ if (q.timestamp === null) { /* 无效 */ }
 
 ### Quote 可辨识联合
 
-行情类型从「各自独立的接口」收敛为按 `assetType` 判别的联合类型 `Quote`。旧类型名（`FullQuote` / `HKUSHistoryKline` 等）在 beta 阶段可能暂留以保护迁移，但新代码建议统一面向 `Quote`。调用方用 `switch` 收窄：
+行情类型从「各自独立的接口」收敛为按 `assetType` 判别的联合类型 `Quote`。旧类型名（`FullQuote` / `HKUSHistoryKline` 等）可能仍以兼容别名保留，但新代码建议统一面向 `Quote`。调用方用 `switch` 收窄：
 
 ```ts
 import type { Quote } from 'stock-sdk';
@@ -240,7 +240,7 @@ try {
 
 ## 5. 其它清理项
 
-- v1 扁平方法已移除；部分旧字段 / 旧类型名在 beta 阶段可能暂留以保护迁移，最终以类型定义为准。
+- v1 扁平方法已移除；部分旧字段 / 旧类型名可能仍以兼容别名保留，最终以类型定义为准。
 - 删除旧的 `boolean` 签名：`getAShareCodeList(boolean)` / `getUSCodeList(boolean)` 仅保留 options 对象签名（对应 v2 `codes.cn(opts)` / `codes.us(opts)`）。
 - Node baseline 维持 `>=18`（`AbortSignal.any` 带运行时降级）。
 - 新增 subpath 导出：`stock-sdk/{indicators,symbols,signals,screener,cache,errors}`。

@@ -8,7 +8,7 @@ This page records the release history of Stock SDK. The latest v2.0.0 is an **ar
 
 ## v2.0.0
 
-> Released: 2026-06-17
+> Released: 2026-06-18
 >
 > v2.0.0 is the first stable release of v2, rolling up all the work since the beta. For the detailed changes and breaking-change notes see the `v2.0.0-beta.1` entry below; upgrading from v1? Read the [v1 → v2 migration guide](/en/guide/migration-v1-to-v2) first.
 
