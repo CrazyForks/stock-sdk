@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Pre-commit hook: keep website/summary.md in sync with src/ and docs-meta changes.
+# Pre-commit hook: keep website/summary.md + llms.txt / llms-full.txt in sync with src/ and docs-meta changes.
 #
 # 仅当 src/ 或 docs-meta/sdk.json 出现在暂存区时才会触发，
 # 避免文档/测试单独提交时被拖慢（build 约 3s）。
@@ -41,11 +41,11 @@ if ! pnpm docs:meta >/dev/null 2>&1; then
   exit 1
 fi
 
-# 如果 summary.md 被改动，自动加入暂存。
+# 如果受跟踪的生成产物被改动，自动加入暂存。
 # 注：sdk-meta.json 在 .gitignore（**/.generated/）内、不被跟踪，无需也无法 git add；
-# docs:check 是在内存里重新生成并比对它，只有 summary.md 是受跟踪、需保持同步的产物。
+# summary.md 与 llms.txt / llms-full.txt 是受跟踪、需随 src/spec 与 types 保持同步的产物。
 CHANGED_DOCS=""
-for f in website/summary.md; do
+for f in website/summary.md website/public/llms.txt website/public/llms-full.txt; do
   if [ -f "$f" ] && ! git diff --quiet -- "$f"; then
     git add "$f"
     CHANGED_DOCS="$CHANGED_DOCS $f"

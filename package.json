@@ -16,12 +16,13 @@
     "test:integration": "RUN_INTEGRATION=1 vitest run",
     "test:integration:smoke": "RUN_INTEGRATION=1 vitest run test/integration/providers/tencent/quote.int.test.ts test/integration/providers/tencent/batch.int.test.ts test/integration/providers/tencent/tradeCalendar.int.test.ts test/integration/sdk/timeout.int.test.ts",
     "test:integration:full": "RUN_INTEGRATION=1 vitest run test/integration",
-    "docs:meta": "pnpm build && node ./scripts/generate-doc-meta.js",
+    "docs:meta": "pnpm build && node ./scripts/generate-doc-meta.js && pnpm gen:llms",
     "docs:check": "pnpm docs:meta && node ./scripts/check-doc-consistency.js",
     "dev": "vitepress dev website",
     "preview": "vitepress preview website",
     "build:docs": "pnpm docs:meta && DOCS_BASE=/ vitepress build website",
     "build:pages": "pnpm docs:meta && DOCS_BASE=/stock-sdk/ vitepress build website",
+    "gen:llms": "tsx ./scripts/generate-llms.ts",
     "prepare": "node ./scripts/install-git-hooks.js"
   },
   "exports": {
@@ -154,6 +155,7 @@
     "playwright": "^1.58.2",
     "shiki": "^2.5.0",
     "tsup": "^8.3.5",
+    "tsx": "^4.22.4",
     "typescript": "^5.9.3",
     "vitepress": "^1.6.4",
     "vitest": "^4.0.15",

@@ -1,0 +1,2580 @@
+# stock-sdk · 完整 API 参考（为 AI / LLM 工具生成）
+
+> 本文件由 `scripts/generate-llms.ts` 从 `src/spec/methods.ts`（CLI / MCP / Playground 的
+> 单一事实源）与 `src/types` 自动生成，目的是让 AI 工具**一次性读取** stock-sdk 的全部
+> 命名空间方法、参数与返回数据结构。**请勿手改本文件**——改 spec / types 后重新生成。
+>
+> 版本：v2.0.0 · 文档站：https://stock-sdk.linkdiary.cn · npm: `npm i stock-sdk`
+
+## 这是什么
+
+stock-sdk 是一个**零依赖**的股票行情 SDK，浏览器 + Node.js 18+ 双端可用，覆盖
+A 股 / 港股 / 美股 / 公募基金 / 期货 / 期权。API 采用**命名空间**模型，并自带 CLI 与
+内置 MCP server。本文件分三部分：命名空间方法清单、纯计算 subpath 导出、数据结构类型定义。
+
+## 用法
+
+```ts
+import { StockSDK } from 'stock-sdk';
+
+const sdk = new StockSDK(/* options?: RequestClientOptions（timeout / retry / rateLimit /
+  circuitBreaker / providerPolicies / fetchImpl / signal 等，详见下方类型定义） */);
+
+// 命名空间方法：sdk.<namespace>.<method>(...)
+const quotes = await sdk.quotes.cn(['600519']);        // A 股实时行情
+const kline  = await sdk.kline.cn('600519', { period: 'weekly', adjust: 'hfq' });
+
+// 顶层方法
+const hits = await sdk.search('茅台');
+
+// 纯计算 subpath（无需实例化、不发请求）
+import { calcMACD } from 'stock-sdk/indicators';
+import { normalizeSymbol } from 'stock-sdk/symbols';
+```
+
+符号入参：`string` 一等公民，`'600519'` / `'sh600519'` / `'00700'` 均可（由
+`normalizeSymbol` 统一归一）。错误：对外只抛 `SdkError`，带统一 `code`（见 errors 部分）。
+时间无效值为 `null`（非 NaN）。
+
+---
+
+## 一、命名空间方法（共 85 个）
+
+> 形如 `sdk.kline.cn(symbol, options?)`；位置参数与 `options.*` 字段如下。
+
+### `sdk.quotes`
+
+- **`sdk.quotes.cn()`** — 获取 A 股 / 指数全量行情（腾讯）：最新价、涨跌幅、五档盘口、市值、PE/PB 等。
+- **`sdk.quotes.cnSimple()`** — 获取 A 股 / 指数简要行情（价格、涨跌幅、成交量额）。
+- **`sdk.quotes.hk()`** — 获取港股行情。代码 5 位数字，带不带 hk 前缀均可（如 00700 / hk00700）。
+- **`sdk.quotes.us()`** — 获取美股行情。代码如 AAPL / BABA。
+- **`sdk.quotes.fund()`** — 获取公募基金行情（场内 / 场外，净值类）。
+- **`sdk.quotes.fundFlow()`** — 获取资金流向（简版，按代码批量）。
+- **`sdk.quotes.largeOrder()`** — 获取盘口大单占比。
+- **`sdk.quotes.timeline(code)`** — 获取 A 股当日分时走势（单只）。
+    - `code` (位置参数, 必填): 单只股票代码，如 600519 / sh600519
+
+### `sdk.codes`
+
+- **`sdk.codes.cn(options?)`** — 获取 A 股全量代码列表（可按市场筛选 / 去交易所前缀）。
+    - `options.simple` (boolean): 去掉交易所前缀
+    - `options.market` (sh | sz | bj | kc | cy): 按板块筛选
+- **`sdk.codes.us(options?)`** — 获取美股全量代码列表。
+    - `options.simple` (boolean): 去掉市场前缀
+    - `options.market` (NASDAQ | NYSE | AMEX): 交易所筛选 NASDAQ/NYSE/AMEX
+- **`sdk.codes.hk()`** — 获取港股全量代码列表。
+- **`sdk.codes.fund()`** — 获取基金全量代码列表。
+
+### `sdk.batch`
+
+- **`sdk.batch.cn(options?)`** — 批量拉取全市场 A 股行情。⚠️ 可能耗时数十秒、返回数千条（结果会被裁剪）。
+    - `options.batchSize` (number): 单批代码数，默认 500
+    - `options.concurrency` (number): 并发数，默认 7
+    - `options.market` (sh | sz | bj | kc | cy): 按板块筛选
+- **`sdk.batch.hk(options?)`** — 批量拉取全市场港股行情。⚠️ 耗时。
+    - `options.batchSize` (number): 单批代码数，默认 500
+    - `options.concurrency` (number): 并发数，默认 7
+- **`sdk.batch.us(options?)`** — 批量拉取全市场美股行情。⚠️ 耗时。
+    - `options.batchSize` (number): 单批代码数，默认 500
+    - `options.concurrency` (number): 并发数，默认 7
+    - `options.market` (NASDAQ | NYSE | AMEX): 交易所筛选 NASDAQ/NYSE/AMEX
+- **`sdk.batch.byCodes(options?)`** — 按代码列表批量拉取完整行情。
+    - `options.batchSize` (number): 单批代码数，默认 500
+    - `options.concurrency` (number): 并发数，默认 7
+- **`sdk.batch.raw(params)`** — 腾讯原始批量  _(仅 CLI / SDK，无 MCP 工具)_
+    - `params` (位置参数, 必填): 
+
+### `sdk.kline`
+
+- **`sdk.kline.cn(symbol, options?)`** — A 股 / 指数历史 K 线（日 / 周 / 月，含复权）：开高低收、成交量额、振幅、涨跌幅等。复权默认 qfq（前复权，看走势）；做回测 / 收益计算请显式传 hfq（后复权）或 ''（不复权）。日期格式 YYYYMMDD。
+    - `symbol` (位置参数, 必填): 股票 / 指数代码，如 600519 / sh600519
+    - `options.period` (daily | weekly | monthly, 默认 daily): 历史 K 线周期
+    - `options.adjust` (qfq | hfq | none, 默认 qfq): 复权：qfq=前复权(默认,看走势) / hfq=后复权(算收益) / ''=不复权
+    - `options.startDate` (string): 起始日期 YYYYMMDD
+    - `options.endDate` (string): 结束日期 YYYYMMDD
+- **`sdk.kline.cnMinute(symbol, options?)`** — A 股分钟 K 线 / 当日分时。period=1 返回最近约 5 个交易日的分时（不支持复权，可用 startDate/endDate 收窄到当日）；period=5/15/30/60 返回分钟 K 线（adjust 仅此时有效，默认 qfq）。
+    - `symbol` (位置参数, 必填): 股票 / 指数代码，如 600519 / sh600519
+    - `options.period` (1 | 5 | 15 | 30 | 60, 默认 1): 分钟周期；1=当日分时
+    - `options.adjust` (qfq | hfq | none, 默认 qfq): 复权：qfq=前复权(默认,看走势) / hfq=后复权(算收益) / ''=不复权
+    - `options.startDate` (string): 开始时间
+    - `options.endDate` (string): 结束时间
+- **`sdk.kline.hk(symbol, options?)`** — 港股历史 K 线（日 / 周 / 月，含复权，币种 HKD）。代码 5 位数字，带不带 hk 前缀均可（如 00700 / hk00700）。复权默认 qfq；日期格式 YYYYMMDD。
+    - `symbol` (位置参数, 必填): 港股代码，如 00700 / hk00700
+    - `options.period` (daily | weekly | monthly, 默认 daily): 历史 K 线周期
+    - `options.adjust` (qfq | hfq | none, 默认 qfq): 复权：qfq=前复权(默认,看走势) / hfq=后复权(算收益) / ''=不复权
+    - `options.startDate` (string): 起始日期 YYYYMMDD
+    - `options.endDate` (string): 结束日期 YYYYMMDD
+- **`sdk.kline.hkMinute(symbol, options?)`** — 港股分钟 K 线 / 当日分时。period=1 返回当日分时（不支持复权，可用 recentDays 取近 N 日）；period=5/15/30/60 返回分钟 K 线（adjust 仅此时有效，默认 qfq）。时间格式 YYYY-MM-DD HH:mm（港股本地时区 Asia/Hong_Kong）。
+    - `symbol` (位置参数, 必填): 港股代码，如 00700 / hk00700
+    - `options.period` (1 | 5 | 15 | 30 | 60, 默认 1): 分钟周期；1=当日分时
+    - `options.adjust` (qfq | hfq | none, 默认 qfq): 复权：qfq=前复权(默认,看走势) / hfq=后复权(算收益) / ''=不复权
+    - `options.startDate` (string): 开始时间 YYYY-MM-DD HH:mm（港股本地时区）
+    - `options.endDate` (string): 结束时间 YYYY-MM-DD HH:mm（港股本地时区）
+    - `options.ndays` (number): 仅 period=1 生效：返回最近 N 个交易日的分时，默认 1（当日）
+- **`sdk.kline.us(symbol, options?)`** — 美股历史 K 线（日 / 周 / 月，含复权，币种 USD）。代码格式 {market}.{ticker}（如 105.AAPL / 106.BABA）。复权默认 qfq；日期格式 YYYYMMDD。
+    - `symbol` (位置参数, 必填): 美股代码，格式 {market}.{ticker}，如 105.AAPL / 106.BABA
+    - `options.period` (daily | weekly | monthly, 默认 daily): 历史 K 线周期
+    - `options.adjust` (qfq | hfq | none, 默认 qfq): 复权：qfq=前复权(默认,看走势) / hfq=后复权(算收益) / ''=不复权
+    - `options.startDate` (string): 起始日期 YYYYMMDD
+    - `options.endDate` (string): 结束日期 YYYYMMDD
+- **`sdk.kline.usMinute(symbol, options?)`** — 美股分钟 K 线 / 当日分时（仅常规交易时段，不含盘前 / 盘后）。period=1 返回当日分时（不支持复权，可用 recentDays 取近 N 日）；period=5/15/30/60 返回分钟 K 线（adjust 仅此时有效，默认 qfq）。代码格式 {market}.{ticker}，如 105.AAPL。
+    - `symbol` (位置参数, 必填): 美股代码，格式 {market}.{ticker}，如 105.AAPL / 106.BABA
+    - `options.period` (1 | 5 | 15 | 30 | 60, 默认 1): 分钟周期；1=当日分时
+    - `options.adjust` (qfq | hfq | none, 默认 qfq): 复权：qfq=前复权(默认,看走势) / hfq=后复权(算收益) / ''=不复权
+    - `options.startDate` (string): 起始日期 YYYYMMDD
+    - `options.endDate` (string): 结束日期 YYYYMMDD
+    - `options.ndays` (number): 仅 period=1 生效：返回最近 N 个交易日的分时，默认 1（当日）
+- **`sdk.kline.withIndicators(symbol, options?)`** — 带技术指标的历史 K 线（A 股 / 港股 / 美股，market 不传自动按 symbol 识别）。周期默认 daily，复权默认按 SDK 默认（qfq）；日期支持 YYYYMMDD 或 YYYY-MM-DD。indicators 为对象，键取自 14 个指标：ma / macd / boll / kdj / rsi / wr / bias / cci / atr / obv / roc / dmi / sar / kc，每个键传 true 即用默认参数开启，或传配置对象（如 { ma: { periods: [5,10,20] }, macd: { short: 12, long: 26, signal: 9 } }）。SDK 会按指标依赖自动向前多取若干 bar 保证首日有效。
+    - `symbol` (位置参数, 必填): 股票代码（A 股 / 港股 / 美股）
+    - `options.period` (daily | weekly | monthly, 默认 daily): 历史 K 线周期
+    - `options.adjust` (qfq | hfq | none, 默认 qfq): 复权：qfq=前复权(默认,看走势) / hfq=后复权(算收益) / ''=不复权
+    - `options.startDate` (string): 起始日期 YYYYMMDD
+    - `options.endDate` (string): 结束日期 YYYYMMDD
+    - `options.market` (A | HK | US): 市场类型 A / HK / US；不传则由 symbol 自动识别
+    - `options.ma` (number[]): MA 周期(逗号分隔，如 5,10；仅 --ma 用默认)
+    - `options.rsi` (number[]): RSI 周期(逗号分隔，如 5,10；仅 --rsi 用默认)
+    - `options.wr` (number[]): WR 周期(逗号分隔，如 5,10；仅 --wr 用默认)
+    - `options.bias` (number[]): BIAS 周期(逗号分隔，如 5,10；仅 --bias 用默认)
+    - `options.macd` (boolean): 启用 MACD
+    - `options.kdj` (boolean): 启用 KDJ
+    - `options.boll` (boolean): 启用 BOLL
+    - `options.cci` (boolean): 启用 CCI
+    - `options.atr` (boolean): 启用 ATR
+    - `options.obv` (boolean): 启用 OBV
+    - `options.roc` (boolean): 启用 ROC
+    - `options.dmi` (boolean): 启用 DMI
+    - `options.sar` (boolean): 启用 SAR
+    - `options.kc` (boolean): 启用 KC
+
+### `sdk.board`
+
+- **`sdk.board.industry.list()`** — 获取行业板块列表（东方财富）：板块代码、名称、最新价、涨跌幅、成交额、领涨股等。无参。
+- **`sdk.board.industry.spot(symbol)`** — 获取指定行业板块的成分股实时行情列表（最新价、涨跌幅、成交量额等）。symbol 为行业板块代码（如 BK0475）或名称。
+    - `symbol` (位置参数, 必填): 行业板块代码（如 BK0475）或板块名称
+- **`sdk.board.industry.constituents(symbol)`** — 获取指定行业板块的成分股列表（代码、名称等基础信息）。symbol 为行业板块代码（如 BK0475）或名称。
+    - `symbol` (位置参数, 必填): 行业板块代码（如 BK0475）或板块名称
+- **`sdk.board.industry.kline(symbol, options?)`** — 获取行业板块历史 K 线（日/周/月）：日期、开高低收、成交量额、涨跌幅。价格单位为元。复权默认不复权，需前/后复权请显式传 adjust。
+    - `symbol` (位置参数, 必填): 行业板块代码（如 BK0475）或板块名称
+    - `options.period` (daily | weekly | monthly, 默认 daily): 历史 K 线周期
+    - `options.adjust` (qfq | hfq | none): 复权方式，默认不复权（''）；需前复权传 qfq（看走势），后复权传 hfq（算收益）
+    - `options.startDate` (string): 起始日期 YYYYMMDD
+    - `options.endDate` (string): 结束日期 YYYYMMDD
+- **`sdk.board.industry.minuteKline(symbol, options?)`** — 获取行业板块分时/分钟 K 线。period=1 返回当日分时；5/15/30/60 返回对应分钟 K 线。默认 5（5 分钟 K 线），当日分时请传 period=1。
+    - `symbol` (位置参数, 必填): 行业板块代码（如 BK0475）或板块名称
+    - `options.period` (1 | 5 | 15 | 30 | 60, 默认 5): 分钟周期；默认 5（5 分钟 K 线），当日分时请传 period=1
+- **`sdk.board.concept.list()`** — 获取概念板块列表（东方财富）：板块代码、名称、最新价、涨跌幅、成交额、领涨股等。无参。
+- **`sdk.board.concept.spot(symbol)`** — 获取指定概念板块的成分股实时行情列表（最新价、涨跌幅、成交量额等）。symbol 为概念板块代码（如 BK0815）或名称。
+    - `symbol` (位置参数, 必填): 概念板块代码（如 BK0815）或板块名称
+- **`sdk.board.concept.constituents(symbol)`** — 获取指定概念板块的成分股列表（代码、名称等基础信息）。symbol 为概念板块代码（如 BK0815）或名称。
+    - `symbol` (位置参数, 必填): 概念板块代码（如 BK0815）或板块名称
+- **`sdk.board.concept.kline(symbol, options?)`** — 获取概念板块历史 K 线（日/周/月）：日期、开高低收、成交量额、涨跌幅。价格单位为元。复权默认不复权，需前/后复权请显式传 adjust。
+    - `symbol` (位置参数, 必填): 概念板块代码（如 BK0815）或板块名称
+    - `options.period` (daily | weekly | monthly, 默认 daily): 历史 K 线周期
+    - `options.adjust` (qfq | hfq | none): 复权方式，默认不复权（''）；需前复权传 qfq（看走势），后复权传 hfq（算收益）
+    - `options.startDate` (string): 起始日期 YYYYMMDD
+    - `options.endDate` (string): 结束日期 YYYYMMDD
+- **`sdk.board.concept.minuteKline(symbol, options?)`** — 获取概念板块分时/分钟 K 线。period=1 返回当日分时；5/15/30/60 返回对应分钟 K 线。默认 5（5 分钟 K 线），当日分时请传 period=1。
+    - `symbol` (位置参数, 必填): 概念板块代码（如 BK0815）或板块名称
+    - `options.period` (1 | 5 | 15 | 30 | 60, 默认 5): 分钟周期；默认 5（5 分钟 K 线），当日分时请传 period=1
+
+### `sdk.options`
+
+- **`sdk.options.index.spot(product, contract)`** — 获取中金所股指期权 T 型实时报价（认购/认沽分列）。product=产品代码(ho/io/mo)；contract=合约月份。
+    - `product` (位置参数, 必填 取值 ho | io | mo): 产品代码：ho / io / mo
+    - `contract` (位置参数, 必填): 合约（月份），如 2406
+- **`sdk.options.index.kline(symbol)`** — 获取中金所股指期权某合约的日 K 线。
+    - `symbol` (位置参数, 必填): 期权合约代码
+- **`sdk.options.etf.months(cate)`** — 获取 ETF 期权可交易月份列表（含标的/品种信息）。cate=期权品种。
+    - `cate` (位置参数, 必填 取值 50ETF | 300ETF | 500ETF | 科创50 | 科创板50): 期权品种：50ETF / 300ETF / 500ETF / 科创50 / 科创板50
+- **`sdk.options.etf.expireDay(cate, month)`** — 获取 ETF 期权指定月份的到期日与剩余天数。month 格式 YYYY-MM（如 2024-06），可直接取自 get_etf_option_months 返回的月份。
+    - `cate` (位置参数, 必填 取值 50ETF | 300ETF | 500ETF | 科创50 | 科创板50): 期权品种：50ETF / 300ETF / 500ETF / 科创50 / 科创板50
+    - `month` (位置参数, 必填): 月份 YYYY-MM，如 2024-06（可取自 get_etf_option_months 返回的月份）
+- **`sdk.options.etf.minute(code)`** — 获取 ETF 期权某合约的当日分时数据（价格、成交量、持仓量、均价）。
+    - `code` (位置参数, 必填): 期权合约代码
+- **`sdk.options.etf.dailyKline(code)`** — 获取 ETF 期权某合约的日 K 线。
+    - `code` (位置参数, 必填): 期权合约代码
+- **`sdk.options.etf.fiveDayMinute(code)`** — 获取 ETF 期权某合约的近 5 日分时数据。
+    - `code` (位置参数, 必填): 期权合约代码
+- **`sdk.options.commodity.spot(variety, contract)`** — 获取商品期权 T 型实时报价（认购/认沽分列）。variety=品种代码（如 cu/m/au）；contract=合约月份。
+    - `variety` (位置参数, 必填): 品种代码，如 cu / m / au
+    - `contract` (位置参数, 必填): 合约（月份），如 2406
+- **`sdk.options.commodity.kline(symbol)`** — 获取商品期权某合约的日 K 线。
+    - `symbol` (位置参数, 必填): 期权合约代码
+- **`sdk.options.cffex.quotes(options?)`** — 获取中金所全部期权实时行情列表（价格、涨跌、成交、持仓、行权价、剩余天数等）。⚠️ 体积大：默认 pageSize=20000 返回全市场合约。
+    - `options.pageSize` (number): 每页条数，默认 20000
+- **`sdk.options.lhb(symbol, date)`** — 获取期权龙虎榜（按标的与日期，含成交量/持仓量排名、会员席位、净买卖等）。date 格式 YYYY-MM-DD。
+    - `symbol` (位置参数, 必填): 期权标的/合约代码
+    - `date` (位置参数, 必填): 日期 YYYY-MM-DD，如 2024-06-03
+
+### `sdk.futures`
+
+- **`sdk.futures.kline(symbol, options?)`** — 获取国内期货历史 K 线（东财）：开高低收、成交量、持仓量等。symbol 为合约代码，如 rb2605(螺纹钢) / IF2604(沪深300股指) / au2606(黄金)，period 默认 daily(日线)，startDate/endDate 为 YYYYMMDD。
+    - `symbol` (位置参数, 必填): 期货合约代码，如 rb2605 / IF2604 / au2606
+    - `options.period` (daily | weekly | monthly, 默认 daily): 历史 K 线周期
+    - `options.adjust` (qfq | hfq | none, 默认 qfq): 复权：qfq=前复权(默认,看走势) / hfq=后复权(算收益) / ''=不复权
+    - `options.startDate` (string): 起始日期 YYYYMMDD
+    - `options.endDate` (string): 结束日期 YYYYMMDD
+- **`sdk.futures.globalSpot(options?)`** — 获取全球期货实时行情（东财）：国际原油、黄金、外盘指数期货等的最新价、涨跌幅、成交量。pageSize 为每页条数，默认 20。
+    - `options.pageSize` (number): 每页条数，默认 20
+- **`sdk.futures.globalKline(symbol, options?)`** — 获取全球期货历史 K 线（东财）：开高低收、成交量等。symbol 为合约代码，period 默认 daily，startDate/endDate 为 YYYYMMDD。marketCode 为东财市场代码（用于未内置品种，可从全球期货实时行情结果反查）。
+    - `symbol` (位置参数, 必填): 全球期货合约代码，如 CONC(WTI 原油) / GC00Y(COMEX 黄金)
+    - `options.period` (daily | weekly | monthly, 默认 daily): 历史 K 线周期
+    - `options.adjust` (qfq | hfq | none, 默认 qfq): 复权：qfq=前复权(默认,看走势) / hfq=后复权(算收益) / ''=不复权
+    - `options.startDate` (string): 起始日期 YYYYMMDD
+    - `options.endDate` (string): 结束日期 YYYYMMDD
+    - `options.marketCode` (number): 东财市场代码（未内置品种时手动指定）
+- **`sdk.futures.inventorySymbols()`** — 获取期货库存品种列表（东财）：可查库存的品种代码与名称，供 get_futures_inventory 使用。
+- **`sdk.futures.inventory(symbol, options?)`** — 获取指定品种的期货库存历史（东财）：交易所注册仓单 / 库存量及增减。symbol 为品种代码（见 get_futures_inventory_symbols），startDate 为 YYYY-MM-DD(默认 2020-10-28)。pageSize 仅为单页批量大小（默认 500），接口返回全量历史，过大时会被裁剪。
+    - `symbol` (位置参数, 必填): 库存品种代码（见 get_futures_inventory_symbols）
+    - `options.startDate` (string): 开始日期 YYYY-MM-DD，默认 2020-10-28
+    - `options.pageSize` (number): 单页批量大小，默认 500；接口返回全量历史，过大时会被裁剪
+- **`sdk.futures.comexInventory(symbol, options?)`** — 获取 COMEX 黄金 / 白银库存历史（东财）：注册库存、合格库存及总量变化。symbol 必填，取 'gold'(黄金) 或 'silver'(白银)。pageSize 仅为单页批量大小（默认 500），接口返回全量历史，过大时会被裁剪。
+    - `symbol` (位置参数, 必填 取值 gold | silver): 品种：gold=黄金 / silver=白银
+    - `options.pageSize` (number): 单页批量大小，默认 500；接口返回全量历史，过大时会被裁剪
+
+### `sdk.fundFlow`
+
+- **`sdk.fundFlow.individual(symbol, options?)`** — 获取个股资金流历史（日 / 周 / 月）：主力 / 超大单 / 大单 / 中单 / 小单净流入（金额单位元、占比为百分比）。
+    - `symbol` (位置参数, 必填): 股票代码，带不带 sh/sz/bj 前缀均可，如 600519 / sh600519
+    - `options.period` (daily | weekly | monthly, 默认 daily): 历史 K 线周期
+- **`sdk.fundFlow.market()`** — 获取大盘资金流（上证综指 + 深证成指(399001)）：各分类资金净流入金额（元）与占比（%）。
+- **`sdk.fundFlow.rank(options?)`** — 获取个股资金流排名（沪深北 A 股全市场）：按主力净流入排序，金额单位元、占比为百分比。⚠️ 返回全市场数千条，结果裁剪至前 200（按主力净流入降序），完整数据请直接用 SDK。
+    - `options.indicator` (today | 3day | 5day | 10day, 默认 today): 排名周期：today=今日(默认) / 3day / 5day / 10day
+- **`sdk.fundFlow.sectorRank(options?)`** — 获取板块资金流排名（行业 / 概念 / 地域）：按板块主力净流入排序，金额单位元、占比为百分比。
+    - `options.indicator` (today | 3day | 5day | 10day, 默认 today): 排名周期：today=今日(默认) / 3day / 5day / 10day
+    - `options.sectorType` (industry | concept | region, 默认 industry): 板块类型：industry=行业(默认) / concept=概念 / region=地域
+- **`sdk.fundFlow.sectorHistory(symbol, options?)`** — 获取单个板块的历史资金流（日 / 周 / 月）：各分类资金净流入金额（元）与占比（%）。symbol 为板块编号，如 BK0438 或全前缀 90.BK0438。
+    - `symbol` (位置参数, 必填): 板块编号，如 BK0438 或全前缀 90.BK0438
+    - `options.period` (daily | weekly | monthly, 默认 daily): 历史 K 线周期
+
+### `sdk.northbound`
+
+- **`sdk.northbound.minute(direction?, options?)`** — 获取北向 / 南向资金分时数据（当日，按 HH:MM）。返回沪/深分项与合计净流入（单位:万元）。direction:north=北向(默认) / south=南向。
+    - `direction` (位置参数, 可选 取值 north | south): 资金方向:north=北向(默认) / south=南向
+    - `options.direction` (north | south): 方向 north / south
+- **`sdk.northbound.summary()`** — 获取沪深港通市场资金流向汇总（北向 + 南向 + 港股通拆分）：含板块名、净买额/净流入(元)、当日余额、相关指数涨跌幅等。
+- **`sdk.northbound.holdingRank(options?)`** — 获取北向 / 沪股通 / 深股通持股个股排行：含持股股数、持股市值(元)、占流通股/总股本比(%)、区间增持估计等。market:all(默认)/shanghai/shenzhen;period 默认 5day;date 须为有数据的交易日，否则返回空。
+    - `options.market` (all | shanghai | shenzhen, 默认 all): 市场:all(默认) / shanghai=沪股通 / shenzhen=深股通
+    - `options.period` (today | 3day | 5day | 10day | month | quarter | year, 默认 5day): 排名周期:today / 3day / 5day(默认) / 10day / month / quarter / year
+    - `options.date` (string): 指定交易日 YYYY-MM-DD（默认服务端最新交易日）
+- **`sdk.northbound.history(direction?, options?)`** — 获取北向 / 南向资金历史（按日）：成交净买额、买/卖成交额、历史累计净买额、当日资金流入/余额(元)及领涨股。direction:north(默认)/south;不传 startDate/endDate 取全量区间。
+    - `direction` (位置参数, 可选 取值 north | south): 资金方向:north=北向(默认) / south=南向
+    - `options.direction` (north | south): 方向 north / south
+    - `options.startDate` (string): 起始日期 YYYY-MM-DD
+    - `options.endDate` (string): 结束日期 YYYY-MM-DD
+- **`sdk.northbound.individual(symbol, options?)`** — 获取个股的北向持仓历史（按日）：持股数量、持股市值(元)、占流通股/总股本比(%)、当日收盘价与涨跌幅。不传 startDate/endDate 取全量区间。
+    - `symbol` (位置参数, 必填): 单只股票代码，如 600519 / sh600519
+    - `options.startDate` (string): 起始日期 YYYY-MM-DD
+    - `options.endDate` (string): 结束日期 YYYY-MM-DD
+
+### `sdk.marketEvent`
+
+- **`sdk.marketEvent.ztPool(type?, date?)`** — 获取涨停股池（东方财富）：涨停 / 昨日涨停 / 强势 / 次新 / 炸板 / 跌停。字段含价格(元)、涨跌幅(%)、成交额(元)、流通/总市值(元)、换手率(%)、连板数、封板时间(HHMMSS) 等。type 默认 zt；date 不传为最新交易日。
+    - `type` (位置参数, 可选 取值 zt | yesterday | strong | sub_new | broken | dt): 股池类型：zt=涨停 / yesterday=昨日涨停 / strong=强势 / sub_new=次新 / broken=炸板 / dt=跌停
+    - `date` (位置参数, 可选): 日期 YYYYMMDD 或 YYYY-MM-DD，不传为最新交易日
+- **`sdk.marketEvent.stockChanges(type?)`** — 获取当日盘口异动列表（东方财富）：每条含发生时间(HH:MM:SS)、代码、名称、异动类型及中文标签、相关信息。type 不传默认 large_buy(大笔买入)。
+    - `type` (位置参数, 可选 取值 rocket_launch | quick_rebound | large_buy | limit_up_seal | limit_down_open | big_buy_order | auction_up | high_open_5d | gap_up | high_60d | surge_60d | accelerate_down | high_dive | large_sell | limit_down_seal | limit_up_open | big_sell_order | auction_down | low_open_5d | gap_down | low_60d | drop_60d): 异动类型筛选：rocket_launch=火箭发射 / quick_rebound=快速反弹 / large_buy=大笔买入 / limit_up_seal=封涨停板 / limit_down_open=打开跌停板 / big_buy_order=有大买盘 / auction_up=竞价上涨 / high_open_5d=高开5日线 / gap_up=向上缺口 / high_60d=60日新高 / surge_60d=60日大幅上涨 / accelerate_down=加速下跌 / high_dive=高台跳水 / large_sell=大笔卖出 / limit_down_seal=封跌停板 / limit_up_open=打开涨停板 / big_sell_order=有大卖盘 / auction_down=竞价下跌 / low_open_5d=低开5日线 / gap_down=向下缺口 / low_60d=60日新低 / drop_60d=60日大幅下跌
+- **`sdk.marketEvent.boardChanges()`** — 获取当日板块异动汇总（东方财富）：每条含板块名称、涨跌幅(%)、主力净流入(元)、异动总次数、异动最频繁个股（代码 / 名称 / 方向）及异动类型分布。无参。
+
+### `sdk.dragonTiger`
+
+- **`sdk.dragonTiger.detail(options?)`** — 获取龙虎榜上榜个股明细（按日期范围）：代码、名称、上榜日期、收盘价、涨跌幅(%)、净买额/买入额/卖出额/成交额(元)、占总成交比(%)、换手率(%)、流通市值(元)、上榜原因、上榜后 1/2/5/10 日涨跌幅(%)。日期格式 YYYYMMDD，startDate / endDate 均必填。日期区间过大时结果超 200 条会被裁剪，请收窄区间。
+    - `options.startDate` (string, 必填): 起始日期 YYYYMMDD
+    - `options.endDate` (string, 必填): 结束日期 YYYYMMDD
+- **`sdk.dragonTiger.stockStats(period?)`** — 获取龙虎榜个股上榜统计（按周期聚合）：代码、名称、最近上榜日、收盘价、涨跌幅(%)、上榜次数、累计买入/卖出/净额/成交额(元)、累计买/卖方机构次数。period 可选，默认 1month。⚠️ 返回全市场，可能数百至上千条，超 200 条会被裁剪。
+    - `period` (位置参数, 可选 取值 1month | 3month | 6month | 1year): 统计周期：1month / 3month / 6month / 1year，默认 1month
+- **`sdk.dragonTiger.institution(options?)`** — 获取龙虎榜机构买卖明细（按日期范围）：代码、名称、上榜日期、收盘价、涨跌幅(%)、买/卖方机构数、机构买入额/卖出额/净额(元)。日期格式 YYYYMMDD，startDate / endDate 均必填。日期区间过大时结果超 200 条会被裁剪，请收窄区间。
+    - `options.startDate` (string, 必填): 起始日期 YYYYMMDD
+    - `options.endDate` (string, 必填): 结束日期 YYYYMMDD
+- **`sdk.dragonTiger.branchRank(period?)`** — 获取龙虎榜营业部（席位）排行（按周期聚合）：营业部代码、名称、买入总额/卖出总额(元)、买入/卖出次数、上榜次数。period 可选，默认 1month。⚠️ 返回全市场，可能数百至上千条，超 200 条会被裁剪。
+    - `period` (位置参数, 可选 取值 1month | 3month | 6month | 1year): 统计周期：1month / 3month / 6month / 1year，默认 1month
+- **`sdk.dragonTiger.seatDetail(symbol, date)`** — 获取个股某日龙虎榜席位明细：排名、营业部名称、买入额/卖出额/净额(元)、买入/卖出占总成交比(%)、买卖方向(buy/sell)。symbol 与 date 均必填；date 支持 YYYYMMDD 或 YYYY-MM-DD。
+    - `symbol` (位置参数, 必填): 单只股票代码，如 600519 / sh600519
+    - `date` (位置参数, 必填): 上榜日期，YYYYMMDD 或 YYYY-MM-DD
+
+### `sdk.blockTrade`
+
+- **`sdk.blockTrade.marketStat()`** — 大宗交易市场统计  _(仅 CLI / SDK，无 MCP 工具)_
+- **`sdk.blockTrade.detail()`** — 大宗交易明细  _(仅 CLI / SDK，无 MCP 工具)_
+- **`sdk.blockTrade.dailyStat()`** — 大宗交易每日统计  _(仅 CLI / SDK，无 MCP 工具)_
+
+### `sdk.margin`
+
+- **`sdk.margin.accountInfo()`** — 融资融券账户统计  _(仅 CLI / SDK，无 MCP 工具)_
+- **`sdk.margin.targetList(date?)`** — 融资融券标的  _(仅 CLI / SDK，无 MCP 工具)_
+    - `date` (位置参数, 可选): 
+
+### `sdk.fund`
+
+- **`sdk.fund.dividendList(options?)`** — 获取基金分红明细列表（东方财富分红送配频道）。接口仅支持「年份+全市场+翻页」查询，不支持服务端按代码精确查；要拿单只基金完整分红记录请同时设 page='all' 与 code（code 为客户端过滤）。默认拉当前年第 1 页、按除息日(FSRQ)倒序。
+    - `options.year` (string): 查询年份，如 "2026"；默认当前年（Asia/Shanghai）
+    - `options.page` (string): 页码（从 1 开始）的数字字符串，或 'all' 自动翻完该年所有页并聚合；默认 1
+    - `options.fundType` (string): 基金类型筛选，空表示全部，如 '股票型' / '指数型-股票' / '混合型-偏股' / 'REITs'
+    - `options.rank` (BZDM | ABBNAME | DJR | FSRQ | FHFCZ | FFR, 默认 FSRQ): 排序字段：BZDM=基金代码 / ABBNAME=基金简称 / DJR=权益登记日 / FSRQ=除息日期(默认) / FHFCZ=分红(元/份) / FFR=分红发放日
+    - `options.sort` (asc | desc, 默认 desc): 排序方向：asc=升序 / desc=降序(默认)
+    - `options.code` (string): 按基金代码过滤（客户端过滤），一般搭配 page='all' 使用
+- **`sdk.fund.navHistory(code)`** — 获取基金历史净值（单位净值 + 累计净值，全历史一次返回，按日期升序）。开放式 / ETF / LOF / 货币 / QDII 均通用。⚠️ 体积大：全历史数千条、响应体约 600KB，建议应用层缓存。
+    - `code` (位置参数, 必填): 基金代码，纯数字，如 110011
+- **`sdk.fund.estimate(code)`** — 获取基金当日实时估值（天天基金 fundgz 接口）。同时返回最新已结算单位净值（nav/navDate）与盘中实时估算（estimatedNav/estimatedChangePercent/estimateTime，涨跌幅单位 %）。QDII / 非交易日 / 部分小众基金的估算字段可能为 null。
+    - `code` (位置参数, 必填): 基金代码，纯数字，如 005827
+- **`sdk.fund.rankHistory(code)`** — 获取基金同类排名走势（每日近三月排名 + 同类总数 + 排名百分位 %，按日期升序）。适合画「该基金在同类里的相对表现」折线图。数据源同 get_fund_nav_history。
+    - `code` (位置参数, 必填): 基金代码，纯数字，如 110011
+
+### `sdk.calendar`
+
+- **`sdk.calendar.isTradingDay(date?)`** — 判断某天是否为 A 股交易日（基于上游官方日历，能识别法定假日）。date 可选，支持 YYYY-MM-DD 或 YYYYMMDD；不传则判断今天。返回 boolean。
+    - `date` (位置参数, 可选): 日期 YYYY-MM-DD 或 YYYYMMDD；不传为今天
+- **`sdk.calendar.nextTradingDay(date?)`** — 返回给定日期之后最近的一个 A 股交易日（YYYY-MM-DD）。date 可选，支持 YYYY-MM-DD 或 YYYYMMDD；不传则以今天为基准。
+    - `date` (位置参数, 可选): 基准日期 YYYY-MM-DD 或 YYYYMMDD；不传为今天
+- **`sdk.calendar.prevTradingDay(date?)`** — 返回给定日期之前最近的一个 A 股交易日（YYYY-MM-DD）。date 可选，支持 YYYY-MM-DD 或 YYYYMMDD；不传则以今天为基准。
+    - `date` (位置参数, 可选): 基准日期 YYYY-MM-DD 或 YYYYMMDD；不传为今天
+- **`sdk.calendar.marketStatus(market?)`** — 获取市场当前实时状态：pre_market(盘前) / open(交易中) / lunch_break(午休) / after_hours(盘后) / closed(休市)。market 可选枚举 A/HK/US，默认 A。⚠️ 同步本地时钟判断、不发请求：A 股基于交易时段但不识别法定假日，港股/美股退化为'周一-周五 + 已知交易时段'近似。
+    - `market` (位置参数, 可选 取值 A | HK | US): 市场：A=A股 / HK=港股 / US=美股，默认 A
+
+### `sdk.reference`
+
+- **`sdk.reference.dividendDetail(symbol)`** — 获取 A 股分红配股明细：历年送转、派息（每 10 股派 X 元）、除权除息日、股权登记日等。代码带不带交易所前缀均可（如 600519 / sh600519）。
+    - `symbol` (位置参数, 必填): 单只股票代码，如 600519 / sh600519
+- **`sdk.reference.tradingCalendar()`** — 获取 A 股交易日历原始数组（升序 'YYYY-MM-DD' 字符串列表，来自腾讯接口，带 12 小时缓存）。⚠️ 体积大：返回数千个交易日。只需判断某日是否交易日 / 取上一或下一交易日时，优先用 calendar 命名空间下的工具，无需拉全量。
+
+### `sdk.search`（顶层方法）
+
+- **`sdk.search(keyword)`** — 模糊搜索股票 / 指数 / 基金（代码 / 名称 / 拼音）。返回 code、name、market、category。
+    - `keyword` (位置参数, 必填): 搜索关键词
+
+---
+
+## 二、纯计算 subpath 导出
+
+> 这些是纯逻辑、不发请求，可从对应子路径按需引入（对 tree-shaking 友好）。
+
+### `stock-sdk/indicators`
+
+技术指标纯函数（输入 K 线数组，输出指标值）
+
+导出：`calcSMA`, `calcEMA`, `calcWMA`, `calcMA`, `calcMACD`, `calcBOLL`, `calcKDJ`, `calcRSI`, `calcWR`, `calcBIAS`, `calcCCI`, `calcATR`, `calcOBV`, `calcROC`, `calcDMI`, `calcSAR`, `calcKC`, `addIndicators`, `KlineWithIndicators`, `INDICATOR_REGISTRY`, `buildIndicatorContext`, `getEnabledIndicatorKeys`, `estimateIndicatorLookback`, `hasCumulativeIndicator`, `IndicatorKey`
+
+### `stock-sdk/signals`
+
+信号层（金叉 / 死叉 / 超买 / 超卖等）
+
+导出：`SignalType`, `Signal`, `SignalOptions`, `calcSignals`
+
+### `stock-sdk/symbols`
+
+符号解析（normalizeSymbol 等，不发请求）
+
+导出：`Market`, `AssetType`, `Exchange`, `SymbolRef`, `NormalizedSymbol`, `SymbolInput`, `normalizeSymbol`, `marketOf`, `toTencentSymbol`, `toEastmoneySecid`, `toPlainCode`, `EXCHANGE_TO_SECID_PREFIX`, `inferAShareExchange`, `extractVariety`, `FUTURES_EXCHANGES`
+
+### `stock-sdk/screener`
+
+声明式选股器 + 本地回测引擎
+
+导出：`screen`, `ScreenerBuilder`, `backtest`, `Strategy`, `StrategySignal`, `Trade`, `BacktestOptions`, `BacktestReport`
+
+### `stock-sdk/cache`
+
+缓存层（MemoryCache / cacheThrough 等）
+
+导出：`MemoryCache`, `getSharedCache`, `clearSharedCaches`, `createCacheKey`, `CacheOptions`, `MaybePromise`, `CacheStore`, `MemoryCacheStore`, `cacheThrough`
+
+### `stock-sdk/errors`
+
+统一错误体系（SdkError 及子类、错误码工具）
+
+导出：`SdkError`, `HttpError`, `UpstreamEmptyError`, `UpstreamError`, `AbortedError`, `NotFoundError`, `InvalidArgumentError`, `InvalidSymbolError`, `getSdkErrorCode`, `isSdkError`, `normalizeRequestError`, `attachErrorMetadata`, `SdkErrorCode`, `RequestError`
+
+  错误码（`SdkError.code` / `SdkErrorCode`）：NETWORK_ERROR · TIMEOUT · ABORTED · HTTP_ERROR · RATE_LIMITED · CIRCUIT_OPEN · UPSTREAM_EMPTY · UPSTREAM_ERROR · PARSE_ERROR · INVALID_SYMBOL · INVALID_ARGUMENT · NOT_FOUND
+
+---
+
+## 三、数据结构（TypeScript 类型定义）
+
+> 以下为各方法返回值与选项的权威 TS 定义（源文件原样拼接）。安装 `stock-sdk` 后，
+> 编辑器 / IDE 内 AI 也能直接通过随包发布的 `.d.ts` 读到同样的类型。
+
+```ts
+// ============================================================
+// src/types/common.ts
+// ============================================================
+/**
+ * 标准化的搜索结果资产分类
+ * - 由 `SearchResult.type` 原始字符串归一化得到
+ * - 用于跨数据源做统一的资产类型判断
+ */
+export type SearchResultType =
+  | 'stock'
+  | 'index'
+  | 'fund'
+  | 'bond'
+  | 'futures'
+  | 'option'
+  | 'other';
+
+/**
+ * 搜索结果
+ *
+ * @remarks
+ * `type` 字段保留上游原始资产类型字符串（如 `'GP-A'`、`'ZS'`、`'KJ'` 等），
+ * 以保持向后兼容；如需基于统一分类做判断，请使用 `category`。
+ */
+export interface SearchResult {
+  /** 股票代码（完整，如 `sh600519`） */
+  code: string;
+  /** 名称 */
+  name: string;
+  /** 市场标识，如 `sh` / `sz` / `hk` / `us` */
+  market: string;
+  /** 上游原始资产类型字符串，如 `'GP-A'` / `'ZS'` / `'KJ'` */
+  type: string;
+  /**
+   * 标准化后的资产分类（在原始 `type` 基础上做归一化）
+   * - 不影响 `type` 原值，可放心用于 `switch` 等场景
+   */
+  category?: SearchResultType;
+}
+
+/**
+ * 外部财经站点链接
+ */
+export interface ExternalLink {
+  /** 站点名称 */
+  name: string;
+  /** 可直接打开的 URL */
+  url: string;
+}
+
+/**
+ * 分红派送详情
+ */
+export interface DividendDetail {
+  code: string;
+  name: string;
+  reportDate: string | null;
+  planNoticeDate: string | null;
+  disclosureDate: string | null;
+  assignTransferRatio: number | null;
+  bonusRatio: number | null;
+  transferRatio: number | null;
+  dividendPretax: number | null;
+  dividendDesc: string | null;
+  dividendYield: number | null;
+  eps: number | null;
+  bps: number | null;
+  capitalReserve: number | null;
+  unassignedProfit: number | null;
+  netProfitYoy: number | null;
+  totalShares: number | null;
+  equityRecordDate: string | null;
+  exDividendDate: string | null;
+  payDate: string | null;
+  assignProgress: string | null;
+  noticeDate: string | null;
+}
+
+// ============================================================
+// src/types/quotes.ts
+// ============================================================
+import type { MarketTz } from '../core/time';
+import type { ProviderName } from '../core';
+
+/**
+ * A 股 / 指数 全量行情
+ */
+export interface FullQuote {
+  /** 市场标识 */
+  marketId: string;
+  /** 名称 */
+  name: string;
+  /** 股票代码 */
+  code: string;
+  /** 最新价 */
+  price: number;
+  /** 昨收 */
+  prevClose: number;
+  /** 今开 */
+  open: number;
+  /** 成交量(手) */
+  volume: number;
+  /** 外盘 */
+  outerVolume: number;
+  /** 内盘 */
+  innerVolume: number;
+  /** 买一~买五 { price, volume }[] */
+  bid: { price: number; volume: number }[];
+  /** 卖一~卖五 { price, volume }[] */
+  ask: { price: number; volume: number }[];
+  /** 行情时间(原始字符串,腾讯接口格式 `yyyyMMddHHmmss`,市场时区) */
+  time: string;
+  /** 行情时间对应的 UTC unix 毫秒时间戳;无法解析时为 `null` */
+  timestamp: number | null;
+  /** 行情时间所属市场时区 (`Asia/Shanghai`) */
+  tz: MarketTz;
+  /** 涨跌额 */
+  change: number;
+  /** 涨跌幅% */
+  changePercent: number;
+  /** 最高 */
+  high: number;
+  /** 最低 */
+  low: number;
+  /** 成交量(手) (字段36) */
+  volume2: number;
+  /** 成交额(万) */
+  amount: number;
+  /** 换手率% */
+  turnoverRate: number | null;
+  /** 市盈率(TTM) */
+  pe: number | null;
+  /** 振幅% */
+  amplitude: number | null;
+  /** 流通市值(亿) */
+  circulatingMarketCap: number | null;
+  /** 总市值(亿) */
+  totalMarketCap: number | null;
+  /** 市净率 */
+  pb: number | null;
+  /** 涨停价 */
+  limitUp: number | null;
+  /** 跌停价 */
+  limitDown: number | null;
+  /** 量比 */
+  volumeRatio: number | null;
+  /** 均价 */
+  avgPrice: number | null;
+  /** 市盈率(静) */
+  peStatic: number | null;
+  /** 市盈率(动) */
+  peDynamic: number | null;
+  /** 52周最高价 */
+  high52w: number | null;
+  /** 52周最低价 */
+  low52w: number | null;
+  /** 流通股本(股) */
+  circulatingShares: number | null;
+  /** 总股本(股) */
+  totalShares: number | null;
+  /** 市场（判别字段） */
+  market: 'CN';
+  /**
+   * 资产类型（判别字段）。注:getFullQuotes 也能查指数(如 sh000001),但 parser 拿不到
+   * 交易所前缀、无法可靠判定指数,故本字段只承诺 'stock'(不在类型里承诺 index,见 TD)。
+   */
+  assetType: 'stock';
+  /** 数据源 */
+  source: ProviderName;
+}
+
+/**
+ * 简要行情（股票；指数也走此结构，但 assetType 不区分，见 FullQuote 说明）
+ */
+export interface SimpleQuote {
+  marketId: string;
+  name: string;
+  code: string;
+  price: number;
+  change: number;
+  changePercent: number;
+  volume: number;
+  amount: number;
+  /** 总市值(亿) */
+  marketCap: number | null;
+  /** 市场类型标识 如 GP-A / ZS */
+  marketType: string;
+  market: 'CN';
+  assetType: 'stock';
+  source: ProviderName;
+}
+
+/**
+ * 资金流向
+ */
+export interface FundFlow {
+  code: string;
+  /** 主力流入 */
+  mainInflow: number;
+  /** 主力流出 */
+  mainOutflow: number;
+  /** 主力净流入 */
+  mainNet: number;
+  /** 主力净流入占比 */
+  mainNetRatio: number;
+  /** 散户流入 */
+  retailInflow: number;
+  /** 散户流出 */
+  retailOutflow: number;
+  /** 散户净流入 */
+  retailNet: number;
+  /** 散户净流入占比 */
+  retailNetRatio: number;
+  /** 总资金流 */
+  totalFlow: number;
+  name: string;
+  /** 数据日期(原始字符串,A 股时区) */
+  date: string;
+  /** 数据日期对应当日 00:00 (`Asia/Shanghai`) 的 UTC 毫秒时间戳;无法解析时为 `null` */
+  timestamp: number | null;
+  /** 数据日期所属时区 (`Asia/Shanghai`) */
+  tz: MarketTz;}
+
+/**
+ * 盘口大单占比
+ */
+export interface PanelLargeOrder {
+  /** 买盘大单占比 */
+  buyLargeRatio: number;
+  /** 买盘小单占比 */
+  buySmallRatio: number;
+  /** 卖盘大单占比 */
+  sellLargeRatio: number;
+  /** 卖盘小单占比 */
+  sellSmallRatio: number;}
+
+/**
+ * 港股扩展行情
+ */
+export interface HKQuote {
+  marketId: string;
+  name: string;
+  code: string;
+  price: number;
+  prevClose: number;
+  open: number;
+  volume: number;
+  /** 行情时间(原始字符串,腾讯接口格式 `yyyyMMddHHmmss`,港股时区) */
+  time: string;
+  /** UTC unix 毫秒时间戳;无法解析时为 `null` */
+  timestamp: number | null;
+  /** 行情时间所属市场时区 (`Asia/Hong_Kong`) */
+  tz: MarketTz;
+  change: number;
+  changePercent: number;
+  high: number;
+  low: number;
+  amount: number;
+  lotSize: number | null;
+  circulatingMarketCap: number | null;
+  totalMarketCap: number | null;
+  currency: string;
+  market: 'HK';
+  assetType: 'stock';
+  source: ProviderName;
+}
+
+/**
+ * 美股行情
+ */
+export interface USQuote {
+  /** 市场标识 */
+  marketId: string;
+  /** 名称 */
+  name: string;
+  /** 股票代码 */
+  code: string;
+  /** 最新价 */
+  price: number;
+  /** 昨收 */
+  prevClose: number;
+  /** 今开 */
+  open: number;
+  /** 成交量 */
+  volume: number;
+  /** 行情时间(原始字符串,腾讯接口格式 `yyyyMMddHHmmss`,美东时区) */
+  time: string;
+  /** UTC unix 毫秒时间戳(自动处理美东夏令时);无法解析时为 `null` */
+  timestamp: number | null;
+  /** 行情时间所属市场时区 (`America/New_York`) */
+  tz: MarketTz;
+  /** 涨跌额 */
+  change: number;
+  /** 涨跌幅% */
+  changePercent: number;
+  /** 最高 */
+  high: number;
+  /** 最低 */
+  low: number;
+  /** 成交额 */
+  amount: number;
+  /** 换手率% */
+  turnoverRate: number | null;
+  /** 市盈率 */
+  pe: number | null;
+  /** 振幅% */
+  amplitude: number | null;
+  /** 总市值(亿) */
+  totalMarketCap: number | null;
+  /** 市净率 */
+  pb: number | null;
+  /** 52周最高价 */
+  high52w: number | null;
+  /** 52周最低价 */
+  low52w: number | null;
+  market: 'US';
+  assetType: 'stock';
+  source: ProviderName;
+}
+
+/**
+ * 公募基金行情
+ */
+export interface FundQuote {
+  code: string;
+  name: string;
+  /** 最新单位净值 */
+  nav: number;
+  /** 累计净值 */
+  accNav: number;
+  /** 当日涨跌额 */
+  change: number;
+  /** 净值日期(原始字符串,如 `'2024-05-12'`,A 股时区) */
+  navDate: string;
+  /** 净值日期对应当日 00:00 (`Asia/Shanghai`) 的 UTC 毫秒时间戳;无法解析时为 `null` */
+  timestamp: number | null;
+  /** 净值日期所属时区 (`Asia/Shanghai`) */
+  tz: MarketTz;
+  market: 'CN';
+  assetType: 'fund';
+  source: ProviderName;
+}
+
+/**
+ * 行情可辨识联合（按 `market` + `assetType` 判别）
+ */
+export type Quote = FullQuote | HKQuote | USQuote | FundQuote;
+
+// ============================================================
+// src/types/kline.ts
+// ============================================================
+import type { MarketTz } from '../core/time';
+
+/**
+ * A 股历史 K 线（日/周/月）
+ */
+export interface HistoryKline {
+  /** 日期 YYYY-MM-DD (A 股时区) */
+  date: string;
+  /** 当日 00:00 (`Asia/Shanghai`) 的 UTC 毫秒时间戳;无法解析时为 `null` */
+  timestamp: number | null;
+  /** 日期所属市场时区 (`Asia/Shanghai`) */
+  tz: MarketTz;
+  /** 股票代码 */
+  code: string;
+  /** 开盘价 */
+  open: number | null;
+  /** 收盘价 */
+  close: number | null;
+  /** 最高价 */
+  high: number | null;
+  /** 最低价 */
+  low: number | null;
+  /** 成交量 */
+  volume: number | null;
+  /** 成交额 */
+  amount: number | null;
+  /** 振幅% */
+  amplitude: number | null;
+  /** 涨跌幅% */
+  changePercent: number | null;
+  /** 涨跌额 */
+  change: number | null;
+  /** 换手率% */
+  turnoverRate: number | null;
+}
+
+/**
+ * A 股分时数据（1 分钟）
+ */
+export interface MinuteTimeline {
+  /** 时间 YYYY-MM-DD HH:mm (A 股时区) */
+  time: string;
+  /** UTC 毫秒时间戳 (`Asia/Shanghai` 解释);无法解析时为 `null` */
+  timestamp: number | null;
+  /** 时间所属市场时区 (`Asia/Shanghai`) */
+  tz: MarketTz;
+  /** 开盘价 */
+  open: number | null;
+  /** 收盘价 */
+  close: number | null;
+  /** 最高价 */
+  high: number | null;
+  /** 最低价 */
+  low: number | null;
+  /** 成交量 */
+  volume: number | null;
+  /** 成交额 */
+  amount: number | null;
+  /** 均价 */
+  avgPrice: number | null;
+}
+
+/**
+ * A 股分钟 K 线（5/15/30/60）
+ */
+export interface MinuteKline {
+  /** 时间 YYYY-MM-DD HH:mm (A 股时区) */
+  time: string;
+  /** UTC 毫秒时间戳 (`Asia/Shanghai` 解释);无法解析时为 `null` */
+  timestamp: number | null;
+  /** 时间所属市场时区 (`Asia/Shanghai`) */
+  tz: MarketTz;
+  /** 开盘价 */
+  open: number | null;
+  /** 收盘价 */
+  close: number | null;
+  /** 最高价 */
+  high: number | null;
+  /** 最低价 */
+  low: number | null;
+  /** 成交量 */
+  volume: number | null;
+  /** 成交额 */
+  amount: number | null;
+  /** 振幅% */
+  amplitude: number | null;
+  /** 涨跌幅% */
+  changePercent: number | null;
+  /** 涨跌额 */
+  change: number | null;
+  /** 换手率% */
+  turnoverRate: number | null;
+}
+
+/**
+ * 当日分时项
+ */
+export interface TodayTimeline {
+  /** 时间 HH:mm (A 股时区) */
+  time: string;
+  /**
+   * UTC 毫秒时间戳。由所属 `TodayTimelineResponse.date` 与 `time` 拼接后,
+   * 按 `Asia/Shanghai` 解释得到;无法解析时为 `null`。
+   */
+  timestamp: number | null;
+  /** 时间所属市场时区 (`Asia/Shanghai`) */
+  tz: MarketTz;
+  /** 当前价 */
+  price: number;
+  /** 均价 */
+  avgPrice: number;
+  /** 累计成交量(股) */
+  volume: number;
+  /** 累计成交额(元) */
+  amount: number;
+}
+
+/**
+ * 当日分时响应
+ */
+export interface TodayTimelineResponse {
+  /** 股票代码 */
+  code: string;
+  /** 交易日期 YYYY-MM-DD (A 股时区) */
+  date: string;
+  /** 交易日 00:00 (`Asia/Shanghai`) 的 UTC 毫秒时间戳;无法解析时为 `null` */
+  timestamp: number | null;
+  /** 日期所属市场时区 (`Asia/Shanghai`) */
+  tz: MarketTz;
+  /**
+   * 昨收价
+   * - 由 SDK 解析腾讯接口的 `quoteFields[4]` 得到
+   * - 上游异常或接口未返回时可能为 `0` 或 `undefined`
+   */
+  preClose?: number;
+  /** 当日分时序列 */
+  data: TodayTimeline[];
+}
+
+/**
+ * 港股 / 美股历史 K 线公共字段。
+ *
+ * 内部基类,通常不直接使用。请用具体的 `HKHistoryKline` 或 `USHistoryKline`,
+ * 它们各自带本地化字段 (`currency` / `lotSize`)。
+ */
+interface ForeignHistoryKlineBase {
+  /** 日期 YYYY-MM-DD (市场本地时区) */
+  date: string;
+  /** UTC 毫秒时间戳;无法解析时为 `null` */
+  timestamp: number | null;
+  /** 股票代码 */
+  code: string;
+  /** 股票名称 */
+  name: string;
+  /** 开盘价 */
+  open: number | null;
+  /** 收盘价 */
+  close: number | null;
+  /** 最高价 */
+  high: number | null;
+  /** 最低价 */
+  low: number | null;
+  /** 成交量 */
+  volume: number | null;
+  /** 成交额 */
+  amount: number | null;
+  /** 振幅% */
+  amplitude: number | null;
+  /** 涨跌幅% */
+  changePercent: number | null;
+  /** 涨跌额 */
+  change: number | null;
+  /** 换手率% */
+  turnoverRate: number | null;
+}
+
+/**
+ * 港股历史 K 线
+ *
+ * `currency` 固定 `'HKD'`,`tz` 固定 `'Asia/Hong_Kong'`。
+ * `lotSize`(每手股数)由 K 线接口本身不直接返回,目前为 `null`,
+ * 后续若数据源补齐再填充;如需港股每手股数请用 `getHKQuotes` 的 `lotSize` 字段。
+ */
+export interface HKHistoryKline extends ForeignHistoryKlineBase {
+  /** 时区 (`Asia/Hong_Kong`) */
+  tz: MarketTz;
+  /** 计价币种 (固定 `'HKD'`) */
+  currency: 'HKD';
+  /** 港股每手股数;K 线接口暂不返回,固定 `null` */
+  lotSize: number | null;
+}
+
+/**
+ * 美股历史 K 线
+ *
+ * `currency` 固定 `'USD'`,`tz` 固定 `'America/New_York'`(自动处理夏令时切换)。
+ * 不含盘前/盘后(extended hours)数据,仅常规交易时段。
+ */
+export interface USHistoryKline extends ForeignHistoryKlineBase {
+  /** 时区 (`America/New_York`,含夏令时) */
+  tz: MarketTz;
+  /** 计价币种 (固定 `'USD'`) */
+  currency: 'USD';
+}
+
+/**
+ * A 股 / 港股 / 美股历史 K 线的联合类型。
+ * 供指标计算等需要统一约束「任意市场历史 K 线」的通用逻辑使用。
+ */
+export type AnyHistoryKline = HistoryKline | HKHistoryKline | USHistoryKline;
+
+/**
+ * 港股分钟 K 线（5/15/30/60；v1.10.0+）
+ *
+ * 字段与 A 股 {@link MinuteKline} 同结构，额外携带 `currency` / `code`。
+ * `tz` 固定为 `'Asia/Hong_Kong'`。
+ */
+export interface HKMinuteKline extends Omit<MinuteKline, 'tz'> {
+  tz: MarketTz;
+  currency: 'HKD';
+  code: string;
+}
+
+/**
+ * 港股当日分时（1 分钟；v1.10.0+）
+ *
+ * `tz` 固定为 `'Asia/Hong_Kong'`。
+ */
+export interface HKMinuteTimeline extends Omit<MinuteTimeline, 'tz'> {
+  tz: MarketTz;
+  currency: 'HKD';
+  code: string;
+}
+
+/**
+ * 美股分钟 K 线（5/15/30/60；v1.10.0+）
+ *
+ * `tz` 固定为 `'America/New_York'`（含夏令时切换）。
+ * 不含盘前 / 盘后数据，仅常规交易时段。
+ */
+export interface USMinuteKline extends Omit<MinuteKline, 'tz'> {
+  tz: MarketTz;
+  currency: 'USD';
+  code: string;
+}
+
+/**
+ * 美股当日分时（1 分钟；v1.10.0+）
+ *
+ * `tz` 固定为 `'America/New_York'`。
+ */
+export interface USMinuteTimeline extends Omit<MinuteTimeline, 'tz'> {
+  tz: MarketTz;
+  currency: 'USD';
+  code: string;
+}
+
+// ============================================================
+// src/types/board.ts
+// ============================================================
+/**
+ * 行业板块列表项
+ */
+export interface IndustryBoard {
+  /** 排名 */
+  rank: number;
+  /** 板块名称 */
+  name: string;
+  /** 板块代码，如 BK1027 */
+  code: string;
+  /** 最新价 */
+  price: number | null;
+  /** 涨跌额 */
+  change: number | null;
+  /** 涨跌幅% */
+  changePercent: number | null;
+  /** 总市值 */
+  totalMarketCap: number | null;
+  /** 换手率% */
+  turnoverRate: number | null;
+  /** 上涨家数 */
+  riseCount: number | null;
+  /** 下跌家数 */
+  fallCount: number | null;
+  /** 领涨股名称 */
+  leadingStock: string | null;
+  /** 领涨股涨跌幅% */
+  leadingStockChangePercent: number | null;
+}
+
+/**
+ * 行业板块实时行情指标
+ */
+export interface IndustryBoardSpot {
+  item: string;
+  value: number | null;
+}
+
+/**
+ * 行业板块成分股
+ */
+export interface IndustryBoardConstituent {
+  /** 排名 */
+  rank: number;
+  /** 股票代码 */
+  code: string;
+  /** 股票名称 */
+  name: string;
+  /** 最新价 */
+  price: number | null;
+  /** 涨跌幅% */
+  changePercent: number | null;
+  /** 涨跌额 */
+  change: number | null;
+  /** 成交量 */
+  volume: number | null;
+  /** 成交额 */
+  amount: number | null;
+  /** 振幅% */
+  amplitude: number | null;
+  /** 最高价 */
+  high: number | null;
+  /** 最低价 */
+  low: number | null;
+  /** 开盘价 */
+  open: number | null;
+  /** 昨收 */
+  prevClose: number | null;
+  /** 换手率% */
+  turnoverRate: number | null;
+  /** 市盈率 */
+  pe: number | null;
+  /** 市净率 */
+  pb: number | null;
+}
+
+/**
+ * 行业板块历史 K 线
+ */
+export interface IndustryBoardKline {
+  date: string;
+  open: number | null;
+  close: number | null;
+  high: number | null;
+  low: number | null;
+  volume: number | null;
+  amount: number | null;
+  amplitude: number | null;
+  changePercent: number | null;
+  change: number | null;
+  turnoverRate: number | null;
+}
+
+/**
+ * 行业板块 1 分钟分时
+ */
+export interface IndustryBoardMinuteTimeline {
+  time: string;
+  open: number | null;
+  close: number | null;
+  high: number | null;
+  low: number | null;
+  volume: number | null;
+  amount: number | null;
+  /** 最新价 */
+  price: number | null;
+}
+
+/**
+ * 行业板块分钟 K 线（5/15/30/60）
+ */
+export interface IndustryBoardMinuteKline {
+  time: string;
+  open: number | null;
+  close: number | null;
+  high: number | null;
+  low: number | null;
+  volume: number | null;
+  amount: number | null;
+  amplitude: number | null;
+  changePercent: number | null;
+  change: number | null;
+  turnoverRate: number | null;
+}
+
+/**
+ * 概念板块类型复用行业板块结构
+ */
+export type ConceptBoard = IndustryBoard;
+export type ConceptBoardSpot = IndustryBoardSpot;
+export type ConceptBoardConstituent = IndustryBoardConstituent;
+export type ConceptBoardKline = IndustryBoardKline;
+export type ConceptBoardMinuteTimeline = IndustryBoardMinuteTimeline;
+export type ConceptBoardMinuteKline = IndustryBoardMinuteKline;
+
+// ============================================================
+// src/types/options.ts
+// ============================================================
+/**
+ * 中金所股指期权产品
+ */
+export type IndexOptionProduct = 'ho' | 'io' | 'mo';
+
+/**
+ * 期权 T 型报价项
+ */
+export interface OptionTQuote {
+  symbol: string;
+  buyVolume: number | null;
+  buyPrice: number | null;
+  price: number | null;
+  askPrice: number | null;
+  askVolume: number | null;
+  openInterest: number | null;
+  change: number | null;
+  strikePrice: number | null;
+}
+
+/**
+ * 期权 T 型报价结果
+ */
+export interface OptionTQuoteResult {
+  calls: OptionTQuote[];
+  puts: OptionTQuote[];
+}
+
+/**
+ * 期权日 K 线
+ */
+export interface OptionKline {
+  date: string;
+  open: number | null;
+  high: number | null;
+  low: number | null;
+  close: number | null;
+  volume: number | null;
+}
+
+/**
+ * 期权分钟数据
+ */
+export interface OptionMinute {
+  time: string;
+  date: string;
+  price: number | null;
+  volume: number | null;
+  openInterest: number | null;
+  avgPrice: number | null;
+}
+
+/**
+ * ETF 期权月份信息
+ */
+export interface ETFOptionMonth {
+  months: string[];
+  stockId: string;
+  cateId: string;
+  cateList: string[];
+}
+
+/**
+ * ETF 期权到期信息
+ */
+export interface ETFOptionExpireDay {
+  expireDay: string;
+  remainderDays: number;
+  stockId: string;
+  name: string;
+}
+
+/**
+ * ETF 期权品种
+ */
+export type ETFOptionCate = '50ETF' | '300ETF' | '500ETF' | '科创50' | '科创板50';
+
+/**
+ * 中金所期权实时行情
+ */
+export interface CFFEXOptionQuote {
+  code: string;
+  name: string;
+  price: number | null;
+  change: number | null;
+  changePercent: number | null;
+  volume: number | null;
+  amount: number | null;
+  openInterest: number | null;
+  strikePrice: number | null;
+  remainDays: number | null;
+  dailyChange: number | null;
+  prevSettle: number | null;
+  open: number | null;
+}
+
+/**
+ * 期权龙虎榜项
+ */
+export interface OptionLHBItem {
+  tradeType: string;
+  date: string;
+  symbol: string;
+  targetName: string;
+  rank: number;
+  memberName: string;
+  sellVolume: number | null;
+  sellVolumeChange: number | null;
+  netSellVolume: number | null;
+  sellVolumeRatio: number | null;
+  buyVolume: number | null;
+  buyVolumeChange: number | null;
+  netBuyVolume: number | null;
+  buyVolumeRatio: number | null;
+  sellPosition: number | null;
+  sellPositionChange: number | null;
+  netSellPosition: number | null;
+  sellPositionRatio: number | null;
+  buyPosition: number | null;
+  buyPositionChange: number | null;
+  netBuyPosition: number | null;
+  buyPositionRatio: number | null;
+}
+
+// ============================================================
+// src/types/futures.ts
+// ============================================================
+/**
+ * 国内期货交易所
+ */
+export type FuturesExchange = 'SHFE' | 'DCE' | 'CZCE' | 'INE' | 'CFFEX' | 'GFEX';
+
+/**
+ * 期货 K 线
+ */
+export interface FuturesKline {
+  date: string;
+  code: string;
+  name: string;
+  open: number | null;
+  close: number | null;
+  high: number | null;
+  low: number | null;
+  volume: number | null;
+  amount: number | null;
+  amplitude: number | null;
+  changePercent: number | null;
+  change: number | null;
+  turnoverRate: number | null;
+  openInterest: number | null;
+}
+
+/**
+ * 全球期货实时报价
+ */
+export interface GlobalFuturesQuote {
+  code: string;
+  name: string;
+  price: number | null;
+  change: number | null;
+  changePercent: number | null;
+  open: number | null;
+  high: number | null;
+  low: number | null;
+  prevSettle: number | null;
+  volume: number | null;
+  buyVolume: number | null;
+  sellVolume: number | null;
+  openInterest: number | null;
+}
+
+/**
+ * 期货库存品种
+ */
+export interface FuturesInventorySymbol {
+  code: string;
+  name: string;
+  marketCode: string;
+}
+
+/**
+ * 期货库存数据
+ */
+export interface FuturesInventory {
+  code: string;
+  date: string;
+  inventory: number | null;
+  change: number | null;
+}
+
+/**
+ * COMEX 库存数据
+ */
+export interface ComexInventory {
+  date: string;
+  name: string;
+  storageTon: number | null;
+  storageOunce: number | null;
+}
+
+// ============================================================
+// src/types/fund.ts
+// ============================================================
+/**
+ * 公募基金扩展数据类型
+ *
+ * 对应数据源：天天基金 / 东方财富的基金数据频道
+ * （https://fund.eastmoney.com/data/fundfenhong.html 等）。
+ */
+
+/** 分红查询排序字段（与东方财富接口 `rank` 参数一一对应） */
+export type FundDividendRank =
+  | 'BZDM' // 基金代码
+  | 'ABBNAME' // 基金简称
+  | 'DJR' // 权益登记日
+  | 'FSRQ' // 除息日期
+  | 'FHFCZ' // 分红(元/份)
+  | 'FFR'; // 分红发放日
+
+/** 通用排序方向（升序 / 降序） */
+export type FundSortDirection = 'asc' | 'desc';
+
+/** 基金分红查询选项 */
+export interface FundDividendListOptions {
+  /** 查询年份；默认当前年（Asia/Shanghai） */
+  year?: number | string;
+  /**
+   * 页码：从 1 开始；默认 `1`。
+   * 设为 `'all'` 时自动翻完该年份所有页面并聚合结果。
+   */
+  page?: number | 'all';
+  /**
+   * 基金类型筛选，空 / undefined 表示全部。
+   * 例如 `'股票型'`、`'指数型-股票'`、`'混合型-偏股'`、`'REITs'` 等
+   * （字符串与东方财富接口 `ftype` 参数原样对应）。
+   */
+  fundType?: string;
+  /** 排序字段，默认 `'FSRQ'`（除息日期） */
+  rank?: FundDividendRank;
+  /** 排序方向，默认 `'desc'` */
+  sort?: FundSortDirection;
+  /**
+   * 按基金代码过滤（客户端过滤，因为接口本身不支持按代码精确查）。
+   * 一般搭配 `page: 'all'` 使用，否则可能因目标记录不在当前页而无结果。
+   */
+  code?: string;
+}
+
+/** 一条基金分红记录 */
+export interface FundDividend {
+  /** 基金代码 */
+  code: string;
+  /** 基金简称 */
+  name: string;
+  /** 权益登记日（`YYYY-MM-DD`），无则 `null` */
+  equityRecordDate: string | null;
+  /** 除息日期（`YYYY-MM-DD`），无则 `null` */
+  exDividendDate: string | null;
+  /** 分红金额（元/份），无则 `null` */
+  dividendPerShare: number | null;
+  /** 分红发放日（`YYYY-MM-DD`），无则 `null` */
+  payDate: string | null;
+  /** 分红类型代码（接口第 7 列原始口径，如拆分/派现的类型标识），无则 `null` */
+  dividendType: string | null;
+}
+
+/** 基金分红查询结果 */
+export interface FundDividendListResult {
+  /** 当前页（或聚合后）的分红记录 */
+  items: FundDividend[];
+  /** 数据源汇报的总页数 */
+  totalPages: number;
+  /** 数据源汇报的每页条数 */
+  pageSize: number;
+  /** 当前页码；`page: 'all'` 模式下为 `-1` 表示已聚合 */
+  currentPage: number;
+}
+
+/** 单条历史净值点 */
+export interface FundNavPoint {
+  /** 净值日期 `YYYY-MM-DD`（与时间戳的 UTC 日期一致，对应 A 股交易日） */
+  date: string;
+  /** 净值日期对应的毫秒时间戳（数据源原值，UTC 当日 00:00） */
+  timestamp: number | null;
+  /** 单位净值 */
+  nav: number;
+  /** 累计净值；与单位净值数组按 timestamp 对齐，无法对齐时为 `null` */
+  accNav: number | null;
+  /** 日增长率（%）；无值时为 `null` */
+  dailyReturn: number | null;
+  /** 每万份收益（货币 / 短债基金有意义，其余通常为空串） */
+  unitMoney: string;
+}
+
+/** 基金历史净值查询结果 */
+export interface FundNavHistory {
+  /** 基金代码（来自 pingzhongdata 的 `fS_code`，若缺失则回填入参） */
+  code: string;
+  /** 基金简称（来自 pingzhongdata 的 `fS_name`，无则 `null`） */
+  name: string | null;
+  /** 历史净值序列；按日期升序（与数据源一致） */
+  items: FundNavPoint[];
+}
+
+/**
+ * 基金当日实时估值（来自天天基金 fundgz 接口）。
+ *
+ * 含两类净值：
+ * - `nav` / `navDate`：最新已结算的单位净值（T-1 或当日盘后）
+ * - `estimatedNav` / `estimatedChangePercent` / `estimateTime`：盘中实时估值
+ */
+export interface FundEstimate {
+  /** 基金代码 */
+  code: string;
+  /** 基金简称 */
+  name: string | null;
+  /** 最新已结算单位净值的日期 `YYYY-MM-DD`，无则 `null` */
+  navDate: string | null;
+  /** 最新已结算单位净值，无则 `null` */
+  nav: number | null;
+  /** 当日实时估值（盘中刷新），无则 `null`（如非交易日、QDII 等） */
+  estimatedNav: number | null;
+  /** 估算涨跌幅 `%`，无则 `null` */
+  estimatedChangePercent: number | null;
+  /** 估算时间原始字符串（如 `"2026-05-26 15:00"`，A 股时区），无则 `null` */
+  estimateTime: string | null;
+}
+
+/** 单条同类排名点（与 `Data_rateInSimilarType` 一一对应） */
+export interface FundRankPoint {
+  /** 报告日期 `YYYY-MM-DD` */
+  date: string;
+  /** 报告日期对应的毫秒时间戳（数据源原值） */
+  timestamp: number | null;
+  /** 同类近三月排名（数字越小越靠前），无值时为 `null` */
+  rank: number | null;
+  /** 同类基金总数，无值时为 `null` */
+  total: number | null;
+  /**
+   * 同类近三月排名百分位（%，越小越好），按 timestamp 与 rank 对齐；
+   * 无对应数据时为 `null`
+   */
+  percentile: number | null;
+}
+
+/** 基金同类排名走势查询结果 */
+export interface FundRankHistory {
+  /** 基金代码（来自 pingzhongdata 的 `fS_code`，若缺失则回填入参） */
+  code: string;
+  /** 基金简称（来自 pingzhongdata 的 `fS_name`，无则 `null`） */
+  name: string | null;
+  /** 排名走势序列；按日期升序 */
+  items: FundRankPoint[];
+}
+
+// ============================================================
+// src/types/fundFlow.ts
+// ============================================================
+/**
+ * 资金流向相关数据类型
+ */
+
+/**
+ * 个股资金流（日/周/月线）
+ */
+export interface StockFundFlowDaily {
+  /** 日期 YYYY-MM-DD */
+  date: string;
+  /** 收盘价 */
+  close: number | null;
+  /** 涨跌幅(%) */
+  changePercent: number | null;
+  /** 主力净流入-净额(元) */
+  mainNetInflow: number | null;
+  /** 主力净流入-净占比(%) */
+  mainNetInflowPercent: number | null;
+  /** 超大单净流入-净额(元) */
+  superLargeNetInflow: number | null;
+  /** 超大单净流入-净占比(%) */
+  superLargeNetInflowPercent: number | null;
+  /** 大单净流入-净额(元) */
+  largeNetInflow: number | null;
+  /** 大单净流入-净占比(%) */
+  largeNetInflowPercent: number | null;
+  /** 中单净流入-净额(元) */
+  mediumNetInflow: number | null;
+  /** 中单净流入-净占比(%) */
+  mediumNetInflowPercent: number | null;
+  /** 小单净流入-净额(元) */
+  smallNetInflow: number | null;
+  /** 小单净流入-净占比(%) */
+  smallNetInflowPercent: number | null;
+}
+
+/**
+ * 个股资金流排名项（多维度统一结构，按排序周期返回相应周期数据）
+ */
+export interface FundFlowRankItem {
+  /** 股票代码 */
+  code: string;
+  /** 股票名称 */
+  name: string;
+  /** 最新价 */
+  price: number | null;
+  /** 涨跌幅(%)（对应排序周期，例如 5 日则为 5 日涨跌幅） */
+  changePercent: number | null;
+  /** 主力净流入-净额(元) */
+  mainNetInflow: number | null;
+  /** 主力净流入-净占比(%) */
+  mainNetInflowPercent: number | null;
+  /** 超大单净流入-净额(元) */
+  superLargeNetInflow: number | null;
+  /** 超大单净流入-净占比(%) */
+  superLargeNetInflowPercent: number | null;
+  /** 大单净流入-净额(元) */
+  largeNetInflow: number | null;
+  /** 大单净流入-净占比(%) */
+  largeNetInflowPercent: number | null;
+  /** 中单净流入-净额(元) */
+  mediumNetInflow: number | null;
+  /** 中单净流入-净占比(%) */
+  mediumNetInflowPercent: number | null;
+  /** 小单净流入-净额(元) */
+  smallNetInflow: number | null;
+  /** 小单净流入-净占比(%) */
+  smallNetInflowPercent: number | null;
+}
+
+/**
+ * 板块资金流排名项
+ */
+export interface SectorFundFlowItem {
+  /** 板块代码（东方财富 BK 编号） */
+  code: string;
+  /** 板块名称 */
+  name: string;
+  /** 涨跌幅(%) */
+  changePercent: number | null;
+  /** 主力净流入-净额(元) */
+  mainNetInflow: number | null;
+  /** 主力净流入-净占比(%) */
+  mainNetInflowPercent: number | null;
+  /** 超大单净流入-净额(元) */
+  superLargeNetInflow: number | null;
+  /** 大单净流入-净额(元) */
+  largeNetInflow: number | null;
+  /** 中单净流入-净额(元) */
+  mediumNetInflow: number | null;
+  /** 小单净流入-净额(元) */
+  smallNetInflow: number | null;
+  /** 主力净流入最大股名称 */
+  topStockName?: string;
+  /** 主力净流入最大股代码 */
+  topStockCode?: string;
+}
+
+/**
+ * 大盘资金流（按日）
+ */
+export interface MarketFundFlow {
+  /** 日期 YYYY-MM-DD */
+  date: string;
+  /** 上证指数收盘价 */
+  shClose: number | null;
+  /** 上证指数涨跌幅(%) */
+  shChangePercent: number | null;
+  /** 深证指数收盘价 */
+  szClose: number | null;
+  /** 深证指数涨跌幅(%) */
+  szChangePercent: number | null;
+  /** 主力净流入-净额(元) */
+  mainNetInflow: number | null;
+  /** 主力净流入-净占比(%) */
+  mainNetInflowPercent: number | null;
+  /** 超大单净流入-净额(元) */
+  superLargeNetInflow: number | null;
+  /** 超大单净流入-净占比(%) */
+  superLargeNetInflowPercent: number | null;
+  /** 大单净流入-净额(元) */
+  largeNetInflow: number | null;
+  /** 大单净流入-净占比(%) */
+  largeNetInflowPercent: number | null;
+  /** 中单净流入-净额(元) */
+  mediumNetInflow: number | null;
+  /** 中单净流入-净占比(%) */
+  mediumNetInflowPercent: number | null;
+  /** 小单净流入-净额(元) */
+  smallNetInflow: number | null;
+  /** 小单净流入-净占比(%) */
+  smallNetInflowPercent: number | null;
+}
+
+// ============================================================
+// src/types/northbound.ts
+// ============================================================
+/**
+ * 沪深港通 / 北向资金 数据类型
+ */
+
+/** 资金方向 */
+export type NorthboundDirection = 'north' | 'south';
+
+/** 北向持股市场 */
+export type NorthboundMarket = 'all' | 'shanghai' | 'shenzhen';
+
+/** 北向持股排行查询周期 */
+export type NorthboundRankPeriod =
+  | 'today'
+  | '3day'
+  | '5day'
+  | '10day'
+  | 'month'
+  | 'quarter'
+  | 'year';
+
+/**
+ * 北向 / 南向资金分时数据
+ */
+export interface NorthboundMinuteItem {
+  /** 日期 YYYY-MM-DD */
+  date: string;
+  /** 时间 HH:MM */
+  time: string;
+  /** 沪股通 / 港股通(沪) 净流入(万元) */
+  shanghaiNetInflow: number | null;
+  /** 深股通 / 港股通(深) 净流入(万元) */
+  shenzhenNetInflow: number | null;
+  /** 合计净流入(万元) */
+  totalNetInflow: number | null;
+}
+
+/**
+ * 沪深港通市场资金流向汇总（datacenter RPT_MUTUAL_QUOTA）
+ */
+export interface NorthboundFlowSummary {
+  /** 交易日 YYYY-MM-DD */
+  date: string;
+  /** 类型编号 */
+  type: string;
+  /** 板块名称（如「沪股通」「港股通(沪)」） */
+  boardName: string;
+  /** 资金方向（如「北向资金」「南向资金」） */
+  direction: string;
+  /** 交易状态 */
+  status: string;
+  /** 成交净买额(元，原始接口单位) */
+  netBuyAmount: number | null;
+  /** 资金净流入(元) */
+  netInflow: number | null;
+  /** 当日资金余额(元) */
+  remainAmount: number | null;
+  /** 上涨数 */
+  upCount: number | null;
+  /** 持平数 */
+  flatCount: number | null;
+  /** 下跌数 */
+  downCount: number | null;
+  /** 相关指数代码 */
+  indexCode: string;
+  /** 相关指数名称 */
+  indexName: string;
+  /** 指数涨跌幅(%) */
+  indexChangePercent: number | null;
+}
+
+/**
+ * 北向 / 沪股通 / 深股通持股个股排行项
+ */
+export interface NorthboundHoldingRankItem {
+  /** 日期 YYYY-MM-DD */
+  date: string;
+  /** 股票代码 */
+  code: string;
+  /** 股票名称 */
+  name: string;
+  /** 今日收盘价 */
+  close: number | null;
+  /** 今日涨跌幅(%) */
+  changePercent: number | null;
+  /** 今日持股股数 */
+  holdShares: number | null;
+  /** 今日持股市值(元) */
+  holdMarketValue: number | null;
+  /** 持股占流通股比(%) */
+  holdRatioFloat: number | null;
+  /** 持股占总股本比(%) */
+  holdRatioTotal: number | null;
+  /** 区间增持估计股数 */
+  addShares: number | null;
+  /** 区间增持估计市值(元) */
+  addMarketValue: number | null;
+  /** 区间增持估计市值增幅(%) */
+  addMarketValuePercent: number | null;
+  /** 所属板块 */
+  sector: string;
+}
+
+/**
+ * 北向资金历史项（按日）
+ */
+export interface NorthboundHistoryItem {
+  /** 日期 YYYY-MM-DD */
+  date: string;
+  /** 成交净买额(元) */
+  netBuyAmount: number | null;
+  /** 买入成交额(元) */
+  buyAmount: number | null;
+  /** 卖出成交额(元) */
+  sellAmount: number | null;
+  /** 历史累计净买额(元) */
+  accNetBuyAmount: number | null;
+  /** 当日资金流入(元) */
+  netInflow: number | null;
+  /** 当日资金余额(元) */
+  remainAmount: number | null;
+  /** 领涨股代码 */
+  topStockCode: string | null;
+  /** 领涨股名称 */
+  topStockName: string | null;
+  /** 领涨股涨跌幅(%) */
+  topStockChangePercent: number | null;
+}
+
+/**
+ * 个股北向持仓历史项
+ */
+export interface NorthboundIndividualItem {
+  /** 日期 YYYY-MM-DD */
+  date: string;
+  /** 持股数量 */
+  holdShares: number | null;
+  /** 持股市值(元) */
+  holdMarketValue: number | null;
+  /** 持股占流通股比(%) */
+  holdRatioFloat: number | null;
+  /** 持股占总股本比(%) */
+  holdRatioTotal: number | null;
+  /** 收盘价 */
+  close: number | null;
+  /** 涨跌幅(%) */
+  changePercent: number | null;
+}
+
+// ============================================================
+// src/types/dragonTiger.ts
+// ============================================================
+/**
+ * 龙虎榜数据类型
+ */
+
+/** 龙虎榜统计周期 */
+export type DragonTigerPeriod = '1month' | '3month' | '6month' | '1year';
+
+/**
+ * 龙虎榜详情项
+ */
+export interface DragonTigerDetailItem {
+  /** 股票代码 */
+  code: string;
+  /** 股票名称 */
+  name: string;
+  /** 上榜日期 YYYY-MM-DD */
+  date: string;
+  /** 收盘价 */
+  close: number | null;
+  /** 涨跌幅(%) */
+  changePercent: number | null;
+  /** 龙虎榜净买额(元) */
+  netBuyAmount: number | null;
+  /** 龙虎榜买入额(元) */
+  buyAmount: number | null;
+  /** 龙虎榜卖出额(元) */
+  sellAmount: number | null;
+  /** 龙虎榜成交额(元) */
+  dealAmount: number | null;
+  /** 市场总成交额(元) */
+  totalAmount: number | null;
+  /** 净买额占总成交比(%) */
+  netBuyRatio: number | null;
+  /** 成交额占总成交比(%) */
+  dealAmountRatio: number | null;
+  /** 换手率(%) */
+  turnoverRate: number | null;
+  /** 流通市值(元) */
+  floatMarketValue: number | null;
+  /** 上榜原因 */
+  reason: string;
+  /** 上榜后 1 日涨跌幅(%) */
+  afterChange1d: number | null;
+  /** 上榜后 2 日涨跌幅(%) */
+  afterChange2d: number | null;
+  /** 上榜后 5 日涨跌幅(%) */
+  afterChange5d: number | null;
+  /** 上榜后 10 日涨跌幅(%) */
+  afterChange10d: number | null;
+}
+
+/**
+ * 龙虎榜个股上榜统计项
+ */
+export interface DragonTigerStockStatItem {
+  /** 股票代码 */
+  code: string;
+  /** 股票名称 */
+  name: string;
+  /** 最近上榜日 YYYY-MM-DD */
+  latestDate: string;
+  /** 收盘价 */
+  close: number | null;
+  /** 涨跌幅(%) */
+  changePercent: number | null;
+  /** 上榜次数 */
+  count: number | null;
+  /** 龙虎榜累计买入额(元) */
+  totalBuyAmount: number | null;
+  /** 龙虎榜累计卖出额(元) */
+  totalSellAmount: number | null;
+  /** 龙虎榜累计净额(元) */
+  totalNetAmount: number | null;
+  /** 龙虎榜累计成交额(元) */
+  totalDealAmount: number | null;
+  /** 累计买方机构次数 */
+  buyOrgCount: number | null;
+  /** 累计卖方机构次数 */
+  sellOrgCount: number | null;
+}
+
+/**
+ * 龙虎榜机构买卖项
+ */
+export interface DragonTigerInstitutionItem {
+  /** 股票代码 */
+  code: string;
+  /** 股票名称 */
+  name: string;
+  /** 上榜日期 YYYY-MM-DD */
+  date: string;
+  /** 收盘价 */
+  close: number | null;
+  /** 涨跌幅(%) */
+  changePercent: number | null;
+  /** 买方机构数 */
+  buyOrgCount: number | null;
+  /** 卖方机构数 */
+  sellOrgCount: number | null;
+  /** 机构买入额(元) */
+  orgBuyAmount: number | null;
+  /** 机构卖出额(元) */
+  orgSellAmount: number | null;
+  /** 机构净额(元) */
+  orgNetAmount: number | null;
+}
+
+/**
+ * 龙虎榜营业部排行项
+ */
+export interface DragonTigerBranchItem {
+  /** 营业部代码 */
+  code: string;
+  /** 营业部名称 */
+  name: string;
+  /** 买入总额(元) */
+  totalBuyAmount: number | null;
+  /** 卖出总额(元) */
+  totalSellAmount: number | null;
+  /** 买入次数 */
+  buyCount: number | null;
+  /** 卖出次数 */
+  sellCount: number | null;
+  /** 上榜次数 */
+  totalCount: number | null;
+}
+
+/**
+ * 龙虎榜个股席位明细项
+ */
+export interface DragonTigerSeatItem {
+  /** 排名 */
+  rank: number | null;
+  /** 营业部名称 */
+  branchName: string;
+  /** 买入额(元) */
+  buyAmount: number | null;
+  /** 买入占总成交比(%) */
+  buyAmountRatio: number | null;
+  /** 卖出额(元) */
+  sellAmount: number | null;
+  /** 卖出占总成交比(%) */
+  sellAmountRatio: number | null;
+  /** 净额(元) */
+  netAmount: number | null;
+  /** 类型标识: 'buy' | 'sell' */
+  side: 'buy' | 'sell';
+}
+
+/**
+ * 龙虎榜日期范围参数
+ */
+export interface DragonTigerDateOptions {
+  /** 开始日期 YYYYMMDD */
+  startDate: string;
+  /** 结束日期 YYYYMMDD */
+  endDate: string;
+}
+
+// ============================================================
+// src/types/blockTrade.ts
+// ============================================================
+/**
+ * 大宗交易数据类型
+ */
+
+/**
+ * 大宗交易市场统计项（按日）
+ */
+export interface BlockTradeMarketStatItem {
+  /** 交易日期 YYYY-MM-DD */
+  date: string;
+  /** 上证指数 */
+  shClose: number | null;
+  /** 上证指数涨跌幅(%) */
+  shChangePercent: number | null;
+  /** 大宗交易成交总额(元) */
+  totalAmount: number | null;
+  /** 溢价成交总额(元) */
+  premiumAmount: number | null;
+  /** 溢价成交占比(%) */
+  premiumRatio: number | null;
+  /** 折价成交总额(元) */
+  discountAmount: number | null;
+  /** 折价成交占比(%) */
+  discountRatio: number | null;
+}
+
+/**
+ * 大宗交易明细项
+ */
+export interface BlockTradeDetailItem {
+  /** 股票代码 */
+  code: string;
+  /** 股票名称 */
+  name: string;
+  /** 交易日期 YYYY-MM-DD */
+  date: string;
+  /** 收盘价 */
+  close: number | null;
+  /** 涨跌幅(%) */
+  changePercent: number | null;
+  /** 成交价(元) */
+  dealPrice: number | null;
+  /** 成交量(股) */
+  dealVolume: number | null;
+  /** 成交额(元) */
+  dealAmount: number | null;
+  /** 溢价率(%) */
+  premiumRate: number | null;
+  /** 买方营业部 */
+  buyBranch: string;
+  /** 卖方营业部 */
+  sellBranch: string;
+}
+
+/**
+ * 大宗交易每日统计项（按股票汇总）
+ */
+export interface BlockTradeDailyStatItem {
+  /** 股票代码 */
+  code: string;
+  /** 股票名称 */
+  name: string;
+  /** 交易日期 YYYY-MM-DD */
+  date: string;
+  /** 涨跌幅(%) */
+  changePercent: number | null;
+  /** 收盘价 */
+  close: number | null;
+  /** 成交笔数 */
+  dealCount: number | null;
+  /** 成交总额(元) */
+  dealTotalAmount: number | null;
+  /** 成交总量(股) */
+  dealTotalVolume: number | null;
+  /** 溢价成交额(元) */
+  premiumAmount: number | null;
+  /** 折价成交额(元) */
+  discountAmount: number | null;
+}
+
+/**
+ * 大宗交易日期范围参数
+ */
+export interface BlockTradeDateOptions {
+  /** 开始日期 YYYYMMDD 或 YYYY-MM-DD */
+  startDate?: string;
+  /** 结束日期 YYYYMMDD 或 YYYY-MM-DD */
+  endDate?: string;
+}
+
+// ============================================================
+// src/types/margin.ts
+// ============================================================
+/**
+ * 融资融券数据类型
+ */
+
+/**
+ * 融资融券账户统计项（按日）
+ */
+export interface MarginAccountItem {
+  /** 日期 YYYY-MM-DD */
+  date: string;
+  /** 融资余额(元) */
+  finBalance: number | null;
+  /** 融券余额(元) */
+  loanBalance: number | null;
+  /** 融资买入额(元) */
+  finBuyAmount: number | null;
+  /** 融券卖出额(元) */
+  loanSellAmount: number | null;
+  /** 参与交易的投资者数量 */
+  investorCount: number | null;
+  /** 有融资融券负债的投资者数量 */
+  liabilityInvestorCount: number | null;
+  /** 担保物总价值(元) */
+  totalGuarantee: number | null;
+  /** 平均维持担保比例(%) */
+  avgGuaranteeRatio: number | null;
+}
+
+/**
+ * 融资融券标的证券项
+ */
+export interface MarginTargetItem {
+  /** 证券代码 */
+  code: string;
+  /** 证券名称 */
+  name: string;
+  /** 日期 YYYY-MM-DD */
+  date: string;
+  /** 融资余额(元) */
+  finBalance: number | null;
+  /** 融资买入额(元) */
+  finBuyAmount: number | null;
+  /** 融资偿还额(元) */
+  finRepayAmount: number | null;
+  /** 融券余量(股) */
+  loanBalance: number | null;
+  /** 融券卖出量(股) */
+  loanSellVolume: number | null;
+  /** 融券偿还量(股) */
+  loanRepayVolume: number | null;
+}
+
+// ============================================================
+// src/types/marketEvent.ts
+// ============================================================
+/**
+ * 涨停板 / 盘口异动 数据类型
+ */
+
+/** 涨停股池类型 */
+export type ZTPoolType =
+  | 'zt'         // 涨停股池
+  | 'yesterday'  // 昨日涨停
+  | 'strong'     // 强势股池
+  | 'sub_new'    // 次新股池
+  | 'broken'     // 炸板股池
+  | 'dt';        // 跌停股池
+
+/**
+ * 涨停股池项（统一字段，部分类型某些字段为空）
+ */
+export interface ZTPoolItem {
+  /** 股票代码 */
+  code: string;
+  /** 股票名称 */
+  name: string;
+  /** 最新价(元) */
+  price: number | null;
+  /** 涨跌幅(%) */
+  changePercent: number | null;
+  /** 涨停价(元) - 仅部分池子返回 */
+  limitPrice: number | null;
+  /** 成交额(元) */
+  amount: number | null;
+  /** 流通市值(元) */
+  floatMarketValue: number | null;
+  /** 总市值(元) */
+  totalMarketValue: number | null;
+  /** 换手率(%) */
+  turnoverRate: number | null;
+  /** 连板数 - 仅涨停股池返回 */
+  continuousBoardCount: number | null;
+  /** 首次封板时间 HHMMSS - 涨停/炸板池 */
+  firstBoardTime: string | null;
+  /** 最后封板时间 HHMMSS - 涨停池 */
+  lastBoardTime: string | null;
+  /** 封板资金(元) - 涨停池 */
+  boardAmount: number | null;
+  /** 封单资金(元) - 跌停池 */
+  sealAmount: number | null;
+  /** 炸板次数 */
+  failedCount: number | null;
+  /** 所属行业 */
+  industry: string;
+  /** 涨停统计（如 '3/5' 表示 5 天内涨停 3 次） */
+  ztStatistics: string;
+  /** 振幅(%) - 部分池子返回 */
+  amplitude: number | null;
+  /** 涨速 - 部分池子返回 */
+  speed: number | null;
+}
+
+/** 盘口异动类型 */
+export type StockChangeType =
+  | 'rocket_launch'       // 火箭发射
+  | 'quick_rebound'       // 快速反弹
+  | 'large_buy'           // 大笔买入
+  | 'limit_up_seal'       // 封涨停板
+  | 'limit_down_open'     // 打开跌停板
+  | 'big_buy_order'       // 有大买盘
+  | 'auction_up'          // 竞价上涨
+  | 'high_open_5d'        // 高开 5 日线
+  | 'gap_up'              // 向上缺口
+  | 'high_60d'            // 60 日新高
+  | 'surge_60d'           // 60 日大幅上涨
+  | 'accelerate_down'     // 加速下跌
+  | 'high_dive'           // 高台跳水
+  | 'large_sell'          // 大笔卖出
+  | 'limit_down_seal'     // 封跌停板
+  | 'limit_up_open'       // 打开涨停板
+  | 'big_sell_order'      // 有大卖盘
+  | 'auction_down'        // 竞价下跌
+  | 'low_open_5d'         // 低开 5 日线
+  | 'gap_down'            // 向下缺口
+  | 'low_60d'             // 60 日新低
+  | 'drop_60d';           // 60 日大幅下跌
+
+/**
+ * 盘口异动项
+ */
+export interface StockChangeItem {
+  /** 发生时间 HH:MM:SS */
+  time: string;
+  /** 股票代码 */
+  code: string;
+  /** 股票名称 */
+  name: string;
+  /** 异动类型 */
+  changeType: StockChangeType;
+  /** 异动类型对应的中文标签 */
+  changeTypeLabel: string;
+  /** 相关信息（来自原始接口） */
+  info: string;
+}
+
+/**
+ * 板块异动项
+ */
+export interface BoardChangeItem {
+  /** 板块名称 */
+  name: string;
+  /** 涨跌幅(%) */
+  changePercent: number | null;
+  /** 主力净流入(元) */
+  mainNetInflow: number | null;
+  /** 异动总次数 */
+  totalChangeCount: number | null;
+  /** 异动最频繁个股代码 */
+  topStockCode: string;
+  /** 异动最频繁个股名称 */
+  topStockName: string;
+  /** 异动最频繁个股方向：'大笔买入' | '大笔卖出' */
+  topStockDirection: string;
+  /** 异动类型分布（key 为类型代码，value 为出现次数） */
+  changeTypeDistribution: Record<string, number>;
+}
+
+// ============================================================
+// src/indicators/types.ts
+// ============================================================
+// ========== 输入类型 ==========
+export interface OHLCV {
+  open: number | null;
+  high: number | null;
+  low: number | null;
+  close: number | null;
+  volume?: number | null;
+}
+
+// ========== 配置类型 ==========
+export interface MAOptions {
+  /** 均线周期数组，默认 [5, 10, 20, 30, 60, 120, 250] */
+  periods?: number[];
+  /** 均线类型：'sma'(简单) | 'ema'(指数) | 'wma'(加权)，默认 'sma' */
+  type?: 'sma' | 'ema' | 'wma';
+}
+
+export interface MACDOptions {
+  /** 短期 EMA 周期，默认 12 */
+  short?: number;
+  /** 长期 EMA 周期，默认 26 */
+  long?: number;
+  /** 信号线 EMA 周期，默认 9 */
+  signal?: number;
+}
+
+export interface BOLLOptions {
+  /** 均线周期，默认 20 */
+  period?: number;
+  /** 标准差倍数，默认 2 */
+  stdDev?: number;
+}
+
+export interface KDJOptions {
+  /** RSV 周期，默认 9 */
+  period?: number;
+  /** K 值平滑周期，默认 3 */
+  kPeriod?: number;
+  /** D 值平滑周期，默认 3 */
+  dPeriod?: number;
+}
+
+export interface RSIOptions {
+  /** RSI 周期数组，默认 [6, 12, 24] */
+  periods?: number[];
+}
+
+export interface WROptions {
+  /** WR 周期数组，默认 [6, 10] */
+  periods?: number[];
+}
+
+export interface BIASOptions {
+  /** BIAS 周期数组，默认 [6, 12, 24] */
+  periods?: number[];
+}
+
+export interface CCIOptions {
+  /** CCI 周期，默认 14 */
+  period?: number;
+}
+
+export interface ATROptions {
+  /** ATR 周期，默认 14 */
+  period?: number;
+}
+
+/**
+ * 周期型指标(periods 复数)的文档简写入参:
+ * - `[5, 20]` 等价于 `{ periods: [5, 20] }`
+ * - `{ period: 14 }` 等价于 `{ periods: [14] }`
+ * （文档与 JSDoc 示例即简写形式,registry.normalizeIndicatorOptions 在入口归一）
+ */
+export type PeriodsShorthand = number[] | { period: number };
+
+export interface IndicatorOptions {
+  ma?: MAOptions | PeriodsShorthand | boolean;
+  macd?: MACDOptions | boolean;
+  boll?: BOLLOptions | boolean;
+  kdj?: KDJOptions | boolean;
+  rsi?: RSIOptions | PeriodsShorthand | boolean;
+  wr?: WROptions | PeriodsShorthand | boolean;
+  bias?: BIASOptions | PeriodsShorthand | boolean;
+  cci?: CCIOptions | boolean;
+  atr?: ATROptions | boolean;
+  obv?: OBVOptions | boolean;
+  roc?: ROCOptions | boolean;
+  dmi?: DMIOptions | boolean;
+  sar?: SAROptions | boolean;
+  kc?: KCOptions | boolean;
+}
+
+// ========== 输出类型 ==========
+export interface MAResult {
+  [key: string]: number | null; // ma5, ma10, ma20...
+}
+
+export interface MACDResult {
+  dif: number | null;
+  dea: number | null;
+  macd: number | null;
+}
+
+export interface BOLLResult {
+  mid: number | null;
+  upper: number | null;
+  lower: number | null;
+  bandwidth: number | null;
+}
+
+export interface KDJResult {
+  k: number | null;
+  d: number | null;
+  j: number | null;
+}
+
+export interface RSIResult {
+  [key: string]: number | null; // rsi6, rsi12, rsi24...
+}
+
+export interface WRResult {
+  [key: string]: number | null; // wr6, wr10...
+}
+
+export interface BIASResult {
+  [key: string]: number | null; // bias6, bias12, bias24...
+}
+
+export interface CCIResult {
+  cci: number | null;
+}
+
+export interface ATRResult {
+  /** 真实波幅 */
+  tr: number | null;
+  /** 平均真实波幅 */
+  atr: number | null;
+}
+
+// ========== 新增指标类型 ==========
+export interface OBVOptions {
+  /** OBV 均线周期 */
+  maPeriod?: number;
+}
+
+export interface OBVResult {
+  /** OBV 值 */
+  obv: number | null;
+  /** OBV 均线 */
+  obvMa: number | null;
+}
+
+export interface ROCOptions {
+  /** ROC 周期，默认 12 */
+  period?: number;
+  /** 信号线周期 */
+  signalPeriod?: number;
+}
+
+export interface ROCResult {
+  /** ROC 值（百分比） */
+  roc: number | null;
+  /** 信号线 */
+  signal: number | null;
+}
+
+export interface DMIOptions {
+  /** 周期，默认 14 */
+  period?: number;
+  /** ADX 平滑周期 */
+  adxPeriod?: number;
+}
+
+export interface DMIResult {
+  /** +DI 值 */
+  pdi: number | null;
+  /** -DI 值 */
+  mdi: number | null;
+  /** ADX 值 */
+  adx: number | null;
+  /** ADXR 值 */
+  adxr: number | null;
+}
+
+export interface SAROptions {
+  /** 加速因子初始值，默认 0.02 */
+  afStart?: number;
+  /** 加速因子增量，默认 0.02 */
+  afIncrement?: number;
+  /** 加速因子最大值，默认 0.2 */
+  afMax?: number;
+}
+
+export interface SARResult {
+  /** SAR 值 */
+  sar: number | null;
+  /** 趋势方向：1 上升，-1 下降 */
+  trend: 1 | -1 | null;
+  /** 极值点 */
+  ep: number | null;
+  /** 加速因子 */
+  af: number | null;
+}
+
+export interface KCOptions {
+  /** EMA 周期，默认 20 */
+  emaPeriod?: number;
+  /** ATR 周期，默认 10 */
+  atrPeriod?: number;
+  /** ATR 倍数，默认 2 */
+  multiplier?: number;
+}
+
+export interface KCResult {
+  /** 中轨（EMA） */
+  mid: number | null;
+  /** 上轨 */
+  upper: number | null;
+  /** 下轨 */
+  lower: number | null;
+  /** 通道宽度 */
+  width: number | null;
+}
+
+// ============================================================
+// src/signals/types.ts
+// ============================================================
+/**
+ * 指标信号层类型（v2 B1）
+ */
+
+/** 信号类型 */
+export type SignalType =
+  | 'ma_golden_cross'
+  | 'ma_death_cross'
+  | 'macd_golden_cross'
+  | 'macd_death_cross'
+  | 'kdj_golden_cross'
+  | 'kdj_death_cross'
+  | 'kdj_overbought'
+  | 'kdj_oversold'
+  | 'rsi_overbought'
+  | 'rsi_oversold'
+  | 'boll_break_upper'
+  | 'boll_break_lower'
+  | 'sar_reversal_up'
+  | 'sar_reversal_down';
+
+/** 单条信号 */
+export interface Signal {
+  type: SignalType;
+  /** 对应 K 线的 timestamp（恒非空：calcSignals 跳过 timestamp 为 null 的 K 线） */
+  at: number;
+  /** 对应 K 线在输入数组中的下标 */
+  index: number;
+  /** 附加信息（如金叉的快慢周期、超买超卖的指标值） */
+  detail?: Record<string, number>;
+}
+
+/** 信号计算选项；只为传入的指标计算信号 */
+export interface SignalOptions {
+  /** MA 金叉/死叉：fast 上穿/下穿 slow */
+  ma?: { fast: number; slow: number };
+  /** MACD 金叉/死叉：DIF 上穿/下穿 DEA */
+  macd?: boolean;
+  /** KDJ 金叉死叉 + 超买超卖（默认 80/20） */
+  kdj?: { overbought?: number; oversold?: number };
+  /** RSI 超买超卖（默认 period=6，70/30） */
+  rsi?: { period?: number; overbought?: number; oversold?: number };
+  /** BOLL 收盘突破上/下轨 */
+  boll?: boolean;
+  /** SAR 趋势反转 */
+  sar?: boolean;
+}
+
+// ============================================================
+// src/symbols/types.ts
+// ============================================================
+/**
+ * 统一符号模型类型（v2 A1）
+ *
+ * 设计要点：
+ * - `string` 是一等公民，`SymbolRef` 是「带提示的 string」（其 code 也走 normalizeSymbol）
+ * - `NormalizedSymbol` 是 SDK 内部唯一表示，各 provider 适配器只认它
+ */
+
+/** 交易区域 / 体系（GLOBAL = 海外期货/商品） */
+export type Market = 'CN' | 'HK' | 'US' | 'GLOBAL';
+
+/** 资产类型 */
+export type AssetType =
+  | 'stock'
+  | 'index'
+  | 'fund'
+  | 'bond'
+  | 'futures'
+  | 'option'
+  | 'board';
+
+/**
+ * 交易所 / 市场强判别字段。
+ * 股票：SSE/SZSE/BSE/HKEX/NASDAQ/NYSE/AMEX；
+ * 国内期货：SHFE/DCE/CZCE/INE/CFFEX/GFEX；海外期货：COMEX/NYMEX/CBOT/LME。
+ * 允许 string 兜底以容纳未来扩展。
+ */
+export type Exchange =
+  | 'SSE'
+  | 'SZSE'
+  | 'BSE'
+  | 'HKEX'
+  | 'NASDAQ'
+  | 'NYSE'
+  | 'AMEX'
+  | 'US'
+  | 'SHFE'
+  | 'DCE'
+  | 'CZCE'
+  | 'INE'
+  | 'CFFEX'
+  | 'GFEX'
+  | 'COMEX'
+  | 'NYMEX'
+  | 'CBOT'
+  | 'LME'
+  | (string & {});
+
+/** 用户入参：裸 string，或「带提示的 string」对象 */
+export interface SymbolRef {
+  code: string;
+  market?: Market;
+  assetType?: AssetType;
+  exchange?: Exchange;
+}
+
+/** SDK 内部统一表示 */
+export interface NormalizedSymbol {
+  market: Market;
+  assetType: AssetType;
+  exchange: Exchange;
+  /** 纯代码，无前缀（如 '600519' / '00700' / 'AAPL' / 'IF2412'） */
+  code: string;
+  /** 期货品种（如 'IF' / 'RB'） */
+  variety?: string;
+  /** 原始入参，便于报错与调试 */
+  input: string;
+}
+
+/** API 接受的符号入参类型 */
+export type SymbolInput = string | SymbolRef;
+```
+
+---
+
+_本文件自动生成。完整文档见 https://stock-sdk.linkdiary.cn ；运行时工具发现可用内置 MCP（`stock-sdk mcp`，`tools/list`）。_

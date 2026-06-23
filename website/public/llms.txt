@@ -1,0 +1,16 @@
+# stock-sdk
+
+> 零依赖股票行情 SDK（A 股 / 港股 / 美股 / 基金 / 期货 / 期权），浏览器 + Node.js 双端；
+> 命名空间 API，自带 CLI 与内置 MCP server。版本 v2.0.0。
+
+给 AI / LLM 工具的**完整 API**（全部方法 / 参数 / 数据结构，一次性读取）：
+
+- https://stock-sdk.linkdiary.cn/llms-full.txt
+
+## 链接
+
+- 官网文档：https://stock-sdk.linkdiary.cn
+- v1 → v2 迁移指南：https://stock-sdk.linkdiary.cn/guide/migration-v1-to-v2
+- CLI：https://stock-sdk.linkdiary.cn/cli/ ｜ MCP：https://stock-sdk.linkdiary.cn/mcp/ ｜ API 总览：https://stock-sdk.linkdiary.cn/api/
+- npm：https://www.npmjs.com/package/stock-sdk
+- GitHub：https://github.com/chengzuopeng/stock-sdk
