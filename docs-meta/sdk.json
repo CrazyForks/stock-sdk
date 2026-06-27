@@ -237,7 +237,9 @@
           "fund.navHistory",
           "fund.estimate",
           "fund.rankHistory",
-          "fund.profile"
+          "fund.profile",
+          "fund.theme.getThemeList",
+          "fund.theme.getThemeFunds"
         ]
       }
     ],

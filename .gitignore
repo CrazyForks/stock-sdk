@@ -9,6 +9,7 @@ dist/
 .vscode/
 .cursor/*
 !.cursor/rules/
+.opencode/
 *.swp
 *.swo
 

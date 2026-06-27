@@ -6,6 +6,16 @@ pageClass: changelog-page
 
 本页记录 Stock SDK 的版本更新历史。v2.0.0 是一次**架构跃迁**——在不扩展数据源的前提下，重做了符号模型、数据契约、API 表面、请求层与错误体系，并新增 CLI / MCP 与 subpath 导出。
 
+## v2.2.0
+
+> 发布时间：待发布
+
+### 新增
+
+- **主题基金 API `sdk.fund.theme.*`**：按行业 / 概念主题维度浏览基金，并同步派生到 CLI 与 MCP（`get_theme_list` / `get_theme_funds`）。
+  - `getThemeList(options?)` —— 全部主题列表（行业 / 概念，含日涨幅与近 1 周 / 1 月 / 3 月 / 6 月 / 1 年 / 3 年 / 5 年各阶段收益率，支持排序分页）
+  - `getThemeFunds(themeCode, options?)` —— 指定主题下的基金排行（含基金类型、各阶段收益率、最新净值）
+
 ## v2.1.0
 
 > 发布时间：2026-06-23

@@ -6,6 +6,16 @@ pageClass: changelog-page
 
 This page records the release history of Stock SDK. v2.0.0 is an **architectural leap** — without adding data sources, it reworks the symbol model, data contract, API surface, request layer, and error system, and adds a CLI / MCP and subpath exports.
 
+## v2.2.0
+
+> Released: TBD
+
+### Added
+
+- **Theme fund API `sdk.fund.theme.*`**: browse funds by industry / concept theme, also derived to the CLI and MCP (`get_theme_list` / `get_theme_funds`).
+  - `getThemeList(options?)` — full theme list (industry / concept, with daily change and 1W / 1M / 3M / 6M / 1Y / 3Y / 5Y stage returns, sortable and paginated)
+  - `getThemeFunds(themeCode, options?)` — fund ranking within a theme (fund type, stage returns, latest NAV)
+
 ## v2.1.0
 
 > Released: 2026-06-23

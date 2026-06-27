@@ -1245,31 +1245,20 @@ export const METHOD_SPECS: MethodSpec[] = [
       { flag: 'page', type: 'number', cli: false, desc: '页码，默认1' },
     ],
   },
-  {
-    path: ['fund', 'theme', 'getHotThemes'],
-    toolName: 'get_hot_themes',
-    summary: '热门主题排行',
-    mcpDesc:
-      '获取热门主题基金排行（东方财富天天基金），按RankItems排序的热门主题列表，' +
-      '返回主题代码(code)、名称(name)、日涨幅及各阶段收益率。category=0(行业)/1(概念)/2(全部，默认)。',
-    argShape: 'options',
-    params: [
-      { flag: 'sort', type: 'string', cli: false, desc: '排序字段：ZDF(日涨幅)/SYL_W(近1周)/SYL_M(近1月)/SYL_3M(近3月)/SYL_6M(近6月)/SYL_Y(近1年)/SYL_3Y(近3年)/SYL_5Y(近5年)，默认ZDF' },
-      { flag: 'order', type: 'enum', enum: ['desc', 'asc'], default: 'desc', cli: false, desc: '排序方向：desc(降序，默认)/asc(升序)' },
-      { flag: 'category', type: 'enum', enum: ['0', '1', '2'], default: '2', cli: false, desc: '主题类型：0(行业)/1(概念)/2(全部，默认)' },
-    ],
-  },
+  // NOTE: fund.theme.getHotThemes 暂时下线 —— 上游 FundThemeList 接口不可用（反爬 / 404）。
+  // provider 实现（eastmoney.getHotThemes）与类型保留在 fundTheme.ts，待数据源修复后
+  // 恢复本 spec 条目 + FundThemeService.getHotThemes + 文档即可。
   {
     path: ['fund', 'theme', 'getThemeFunds'],
     toolName: 'get_theme_funds',
     summary: '主题下基金排行',
     mcpDesc:
-      '获取指定主题主题下的基金排行列表（东方财富天天基金）。themeCode为主题代码（如BK0438=食品饮料）。' +
+      '获取指定主题下的基金排行列表（东方财富天天基金）。themeCode为主题代码（如BK0438=食品饮料）。' +
       '可按日涨幅/各阶段收益率排序分页，返回基金代码、名称、基金类型、日涨幅及各阶段收益率、最新净值。',
     argShape: 'symbol+options',
     positional: [SYMBOL_REQ('主题代码，如 BK0438（食品饮料）')],
     params: [
-      { flag: 'sortColumn', type: 'string', cli: false, desc: '排序字段：RZDF(日涨幅)/SYL_Z(近1周)/SYL_Y(近1月)/SYL_3Y(近3月)/SYL_6Y(近6月)/SYL_1N(近1年)/SYL_3N(近3年)/SYL_5N(近5年)，默认SYL_1N' },
+      { flag: 'sortColumn', type: 'string', cli: false, desc: '排序字段：SYL_Z(近1周)/SYL_Y(近1月)/SYL_3Y(近3月)/SYL_1N(近1年，默认)/RZDF(日涨幅)' },
       { flag: 'sort', type: 'enum', enum: ['desc', 'asc'], default: 'desc', cli: false, desc: '排序方向：desc(降序，默认)/asc(升序)' },
       { flag: 'pageSize', type: 'number', cli: false, desc: '每页条数，默认10，最大30' },
       { flag: 'page', type: 'number', cli: false, desc: '页码，默认1' },

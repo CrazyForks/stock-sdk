@@ -250,7 +250,7 @@ describe('eastmoney/fundTheme', () => {
       });
 
       await getThemeFunds(client, 'BK0438', {
-        pageIndex: 2,
+        page: 2,
         pageSize: 30,
         sortColumn: 'SYL_Y',
         sort: 'asc',

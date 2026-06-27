@@ -83,6 +83,8 @@ export const DEFAULT_VALUES: Record<string, Record<string, string>> = {
   'fund.estimate': { code: '005827' },
   'fund.rankHistory': { code: '110011' },
   'fund.profile': { code: '000001' },
+  // ===== fund.theme（getThemeList 参数全可选，开箱即跑；getThemeFunds 必填主题代码；getHotThemes 暂下线）=====
+  'fund.theme.getThemeFunds': { symbol: 'BK0438' },
   // ===== reference / search =====
   'reference.dividendDetail': { symbol: '600519' },
   search: { keyword: '茅台' },

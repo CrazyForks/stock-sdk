@@ -389,30 +389,6 @@ interface ThemeFund {
 }
 ```
 
-## sdk.fund.theme.getHotThemes
-
-Get hot themes ranking (EastMoney / Tian Tian Fund). Returns top themes sorted by the specified field.
-
-### Parameters
-
-```ts
-interface GetHotThemesOptions {
-  sort?: string;          // Sort field: ZDF(daily)/SYL_W(1w)/SYL_M(1m)/SYL_3M(3m)/SYL_6M(6m)/SYL_Y(1y)/SYL_3Y(3y)/SYL_5Y(5y), default ZDF
-  order?: 'desc' | 'asc';// Sort direction: desc(default)/asc
-  category?: '0' | '1' | '2'; // Theme type: '0'(industry)/'1'(concept)/'2'(all, default)
-}
-```
-
-### Example
-
-```ts
-// Get hot themes sorted by 1-week return descending
-const hot = await sdk.fund.theme.getHotThemes({ sort: 'SYL_W', order: 'desc' });
-console.log(hot.slice(0, 10).map(t => `${t.name}: weekly ${t.weeklyReturn}%`));
-```
-
-Note: `getHotThemes` returns a direct `ThemeFund[]` array (not `{ items }`), so you can iterate or slice it directly.
-
 ## sdk.fund.theme.getThemeFunds
 
 Get funds under a specific theme. themeCode is the theme code (e.g. `BK0438` = Food & Beverage). Use `getThemeList` to find theme codes.
@@ -421,7 +397,7 @@ Get funds under a specific theme. themeCode is the theme code (e.g. `BK0438` = F
 
 ```ts
 interface GetThemeFundsOptions {
-  sortColumn?: string;    // Sort: RZDF(daily)/SYL_Z(1w)/SYL_Y(1m)/SYL_3Y(3m)/SYL_6Y(6m)/SYL_1N(1y)/SYL_3N(3y)/SYL_5N(5y), default SYL_1N
+  sortColumn?: string;    // Sort: SYL_Z(1w)/SYL_Y(1m)/SYL_3Y(3m)/SYL_1N(1y, default)/RZDF(daily)
   sort?: 'desc' | 'asc'; // Sort direction: desc(default)/asc
   pageSize?: number;      // Page size, default 10, max 30
   page?: number;          // Page number, default 1
@@ -448,9 +424,9 @@ funds.items.forEach(f => {
 ```ts
 interface ThemeFundItemList {
   items: ThemeFundItem[];
-  totalPages: number;
+  total: number;
+  pageIndex: number;
   pageSize: number;
-  currentPage: number;
 }
 
 interface ThemeFundItem {
@@ -464,7 +440,7 @@ interface ThemeFundItem {
   yearlyReturn: number | null;
   nav: number | null;
   themeCode: string;
-  themeName: string;
+  themeName?: string; // not returned upstream, usually absent
 }
 ```
 

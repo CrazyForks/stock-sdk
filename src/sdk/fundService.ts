@@ -13,10 +13,8 @@ import type {
   FundProfile,
   FundRankHistory,
   GetThemeListOptions,
-  GetHotThemesOptions,
   GetThemeFundsOptions,
   ThemeFundListResult,
-  HotThemesResult,
   ThemeFundItemList,
 } from '../types';
 import type { RequestClient } from '../core';
@@ -49,7 +47,7 @@ export class FundService extends BaseService {
     return eastmoney.getFundRankHistory(this.client, code);
   }
 
-/**
+  /**
    * 获取基金深度资料（一次请求返回全量字段）。
    *
    * 包含：前十大重仓股、资产配置、仓位测算、基金经理、业绩评价、
@@ -74,10 +72,8 @@ export class FundThemeService {
     return eastmoney.getThemeList(this.client, options);
   }
 
-  /** 获取热门主题 */
-  getHotThemes(options?: GetHotThemesOptions): Promise<HotThemesResult> {
-    return eastmoney.getHotThemes(this.client, options);
-  }
+  // NOTE: getHotThemes 暂时下线 —— 上游 FundThemeList 接口不可用（反爬 / 404）。
+  // provider eastmoney.getHotThemes 与类型保留，待数据源修复后恢复本方法 + spec + 文档。
 
   /** 获取主题下基金列表 */
   getThemeFunds(
