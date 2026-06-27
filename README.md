@@ -63,7 +63,7 @@
 - ✅ **技术指标**：MA / MACD / BOLL / KDJ / RSI / WR / BIAS / CCI / ATR / OBV / ROC / DMI / SAR / KC
 - ✅ **信号 / 选股 / 回测**：`calcSignals`（金叉死叉/超买超卖等事件识别）、链式选股器、本地回测
 - ✅ **期货 / 期权 / 资金流 / 龙虎榜 / 北向 / 大宗交易 / 融资融券 / 涨停板** 等全套扩展数据
-- ✅ **基金深度数据**：历史净值、实时估值、同类排名走势、基金/ETF 分红送配
+- ✅ **基金深度数据**：历史净值、实时估值、同类排名走势、基金/ETF 分红送配、**主题基金**
 - ✅ **subpath 导出**：`stock-sdk/{indicators,signals,symbols,screener,cache,errors}`，纯计算不拖入网络层，tree-shake 友好
 - ✅ **统一错误体系**：对外只抛 `SdkError`，带标准 `code`，可从 `stock-sdk/errors` 导入
 - ✅ **请求治理**：provider 级重试 / 限流 / 熔断 + 可注入 `fetchImpl` / `signal` / 生命周期 `hooks`
@@ -275,7 +275,7 @@ import { SdkError, isSdkError, getSdkErrorCode } from 'stock-sdk/errors';
 | `sdk.marketEvent` | `.ztPool` / `.stockChanges` / `.boardChanges` |
 | `sdk.dragonTiger` | `.detail` / `.stockStats` / `.institution` / `.branchRank` / `.seatDetail` |
 | `sdk.blockTrade` / `sdk.margin` | 大宗交易 / 融资融券 |
-| `sdk.fund` | `.dividendList` / `.navHistory` / `.estimate` / `.rankHistory` / `.profile` |
+| `sdk.fund` | `.dividendList` / `.navHistory` / `.estimate` / `.rankHistory` / `.theme` |
 | `sdk.calendar` | `.isTradingDay` / `.nextTradingDay` / `.prevTradingDay` / `.marketStatus` |
 | `sdk.reference` | `.dividendDetail` / `.tradingCalendar` |
 | 顶层 | `sdk.search(keyword)` |

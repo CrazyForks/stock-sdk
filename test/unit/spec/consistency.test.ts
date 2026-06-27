@@ -44,11 +44,11 @@ function sharedParams(spec: MethodSpec): ParamSpec[] {
 }
 
 describe('spec 完整性与两端规模', () => {
-  it('86 个方法 spec；80 个 MCP 工具（6 个 CLI-only：batch.raw/blockTrade×3/margin×2）', () => {
-    expect(METHOD_SPECS.length).toBe(86);
-    expect(MCP_SPECS.length).toBe(80);
-    expect(TOOLS.length).toBe(80);
-    expect(NAMESPACE_COMMANDS.length).toBe(86);
+  it('89 个方法 spec；83 个 MCP 工具（6 个 CLI-only：batch.raw/blockTrade×3/margin×2）', () => {
+    expect(METHOD_SPECS.length).toBe(89);
+    expect(MCP_SPECS.length).toBe(83);
+    expect(TOOLS.length).toBe(83);
+    expect(NAMESPACE_COMMANDS.length).toBe(89);
   });
 
   it('工具名唯一且与 spec 的 toolName 一一对应，tier 归属一致', () => {
@@ -60,8 +60,8 @@ describe('spec 完整性与两端规模', () => {
     }
   });
 
-  it('core 工具集为 24 个高频工具（沿用既有归属）', () => {
-    expect(listTools('core').length).toBe(24);
+  it('core 工具集为 25 个高频工具（含 get_theme_list）', () => {
+    expect(listTools('core').length).toBe(25);
   });
 });
 

@@ -1,6 +1,6 @@
 # fund · Mutual Fund Extended Data
 
-Deep data for mutual funds: dividends & bonuses, NAV history, intraday estimates, and same-category rank history.
+Deep data for mutual funds: dividends & bonuses, NAV history, intraday estimates, same-category rank history, and theme funds.
 
 For real-time fund quotes, use [`sdk.quotes.fund()`](./quotes.md); this namespace is its extension. All methods live under `sdk.fund`, served by the internal `FundService`. Data sources: EastMoney / Tian Tian Fund.
 
@@ -13,6 +13,7 @@ For real-time fund quotes, use [`sdk.quotes.fund()`](./quotes.md); this namespac
 | `sdk.fund.estimate(code)` | Today's intraday estimate + latest settled NAV |
 | `sdk.fund.rankHistory(code)` | Same-category rank trend (trailing-3-month rank + percentile) |
 | `sdk.fund.profile(code)` | Fund deep profile (holdings / asset allocation / managers / evaluation, in one call) |
+| `sdk.fund.theme.*` | Theme funds: theme list, hot themes, funds by theme |
 
 > Symbol inputs follow the v2 convention: a fund code is a plain numeric string (e.g. `'110011'`). Exact fields follow the final implementation.
 
@@ -331,6 +332,141 @@ interface FundSameType {
 ```
 
 The remaining sub-types (`FundBondHolding` / `FundPositionPoint` / `FundHolderStructure` / `FundScaleChange` / `FundBuySedemption`) follow the same shape; see the type definitions for field meanings.
+
+## sdk.fund.theme.getThemeList
+
+Get the theme fund list (EastMoney / Tian Tian Fund). Can filter by industry/concept/all themes, sort by daily change or various period returns.
+
+### Parameters
+
+```ts
+interface GetThemeListOptions {
+  sort?: string;          // Sort field: ZDF(daily)/SYL_W(1w)/SYL_M(1m)/SYL_3M(3m)/SYL_6M(6m)/SYL_Y(1y)/SYL_3Y(3y)/SYL_5Y(5y), default ZDF
+  order?: 'desc' | 'asc';// Sort direction: desc(default)/asc
+  category?: '0' | '1' | '2'; // Theme type: '0'(industry)/'1'(concept)/'2'(all, default)
+  pageSize?: number;      // Page size, default 20, max 50
+  page?: number;          // Page number, default 1
+}
+```
+
+### Example
+
+```ts
+// Get all themes sorted by daily change descending
+const themes = await sdk.fund.theme.getThemeList({ sort: 'ZDF', order: 'desc', pageSize: 20 });
+console.log(themes.items.map(t => `${t.name} ${t.dailyChange}%`));
+
+// Get industry themes sorted by 1-year return
+const industryThemes = await sdk.fund.theme.getThemeList({
+  category: '0',
+  sort: 'SYL_Y',
+  order: 'desc',
+});
+```
+
+### Return Type
+
+```ts
+interface ThemeFundListResult {
+  items: ThemeFund[];
+  totalPages: number;
+  pageSize: number;
+  currentPage: number;
+}
+
+interface ThemeFund {
+  code: string;               // Theme code, e.g. 'BK0438'
+  name: string;               // Theme name, e.g. 'Food & Beverage'
+  dailyChange: number | null;
+  weeklyReturn: number | null;
+  monthlyReturn: number | null;
+  quarterlyReturn: number | null;
+  halfYearReturn: number | null;
+  yearlyReturn: number | null;
+  threeYearReturn: number | null;
+  fiveYearReturn: number | null;
+  type: string;
+}
+```
+
+## sdk.fund.theme.getHotThemes
+
+Get hot themes ranking (EastMoney / Tian Tian Fund). Returns top themes sorted by the specified field.
+
+### Parameters
+
+```ts
+interface GetHotThemesOptions {
+  sort?: string;          // Sort field: ZDF(daily)/SYL_W(1w)/SYL_M(1m)/SYL_3M(3m)/SYL_6M(6m)/SYL_Y(1y)/SYL_3Y(3y)/SYL_5Y(5y), default ZDF
+  order?: 'desc' | 'asc';// Sort direction: desc(default)/asc
+  category?: '0' | '1' | '2'; // Theme type: '0'(industry)/'1'(concept)/'2'(all, default)
+}
+```
+
+### Example
+
+```ts
+// Get hot themes sorted by 1-week return descending
+const hot = await sdk.fund.theme.getHotThemes({ sort: 'SYL_W', order: 'desc' });
+console.log(hot.slice(0, 10).map(t => `${t.name}: weekly ${t.weeklyReturn}%`));
+```
+
+Note: `getHotThemes` returns a direct `ThemeFund[]` array (not `{ items }`), so you can iterate or slice it directly.
+
+## sdk.fund.theme.getThemeFunds
+
+Get funds under a specific theme. themeCode is the theme code (e.g. `BK0438` = Food & Beverage). Use `getThemeList` to find theme codes.
+
+### Parameters
+
+```ts
+interface GetThemeFundsOptions {
+  sortColumn?: string;    // Sort: RZDF(daily)/SYL_Z(1w)/SYL_Y(1m)/SYL_3Y(3m)/SYL_6Y(6m)/SYL_1N(1y)/SYL_3N(3y)/SYL_5N(5y), default SYL_1N
+  sort?: 'desc' | 'asc'; // Sort direction: desc(default)/asc
+  pageSize?: number;      // Page size, default 10, max 30
+  page?: number;          // Page number, default 1
+  fundType?: string;      // Fund type filter, e.g. '股票型'/'混合型'
+}
+```
+
+### Example
+
+```ts
+// Get top funds in Food & Beverage theme by 1-year return
+const funds = await sdk.fund.theme.getThemeFunds('BK0438', {
+  sortColumn: 'SYL_1N',
+  sort: 'desc',
+  pageSize: 10,
+});
+funds.items.forEach(f => {
+  console.log(`${f.code} ${f.name}: 1Y return ${f.yearlyReturn}%`);
+});
+```
+
+### Return Type
+
+```ts
+interface ThemeFundItemList {
+  items: ThemeFundItem[];
+  totalPages: number;
+  pageSize: number;
+  currentPage: number;
+}
+
+interface ThemeFundItem {
+  code: string;
+  name: string;
+  fundType: string;
+  dailyChange: number | null;
+  weeklyReturn: number | null;
+  monthlyReturn: number | null;
+  quarterlyReturn: number | null;
+  yearlyReturn: number | null;
+  nav: number | null;
+  themeCode: string;
+  themeName: string;
+}
+```
 
 ## Notes
 

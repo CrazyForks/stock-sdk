@@ -306,6 +306,7 @@ export class StockSDK {
         estimate: f.getFundEstimate.bind(f),
         rankHistory: f.getFundRankHistory.bind(f),
         profile: f.getFundProfile.bind(f),
+        theme: f.theme,
       };
     });
   }

@@ -1,6 +1,6 @@
 # fund · 公募基金扩展
 
-公募基金深度数据：分红送配、历史净值、实时估值、同类排名走势。
+公募基金深度数据：分红送配、历史净值、实时估值、同类排名走势、主题基金。
 
 基金的实时行情请走 [`sdk.quotes.fund()`](./quotes.md)，本命名空间是它的扩展。所有方法挂在 `sdk.fund` 命名空间下，由内部 `FundService` 承载，数据来源为东方财富 / 天天基金。
 
@@ -13,6 +13,7 @@
 | `sdk.fund.estimate(code)` | 当日盘中实时估值 + 最新已结算净值 |
 | `sdk.fund.rankHistory(code)` | 同类排名走势（近三月排名 + 百分位） |
 | `sdk.fund.profile(code)` | 基金深度资料（重仓股 / 资产配置 / 基金经理 / 业绩评价等，一次返回） |
+| `sdk.fund.theme.*` | 主题基金：主题列表、热门排行、主题下基金排行 |
 
 > 符号入参遵循 v2 统一约定：基金代码为纯数字字符串（如 `'110011'`）。具体字段以实现为准。
 
@@ -333,6 +334,156 @@ interface FundSameType {
 ```
 
 其余子类型（`FundBondHolding` / `FundPositionPoint` / `FundHolderStructure` / `FundScaleChange` / `FundBuySedemption`）字段含义见类型定义，结构与上表同构。
+
+## sdk.fund.theme.getThemeList
+
+获取主题基金列表（东方财富天天基金），可按行业/概念筛选，按日涨幅/各阶段收益率排序分页。
+
+### 参数
+
+```ts
+interface GetThemeListOptions {
+  /** 排序字段：ZDF(日涨幅)/SYL_W(近1周)/SYL_M(近1月)/SYL_3M(近3月)/SYL_6M(近6月)/SYL_Y(近1年)/SYL_3Y(近3年)/SYL_5Y(近5年)，默认 ZDF */
+  sort?: string;
+  /** 排序方向：desc(降序，默认)/asc(升序) */
+  order?: 'desc' | 'asc';
+  /** 主题类型：'0'(行业)/'1'(概念)/'2'(全部，默认) */
+  category?: '0' | '1' | '2';
+  /** 每页条数，默认 20，最大 50 */
+  pageSize?: number;
+  /** 页码，默认 1 */
+  page?: number;
+}
+```
+
+### 调用示例
+
+```ts
+// 获取全部主题，按日涨幅降序
+const themes = await sdk.fund.theme.getThemeList({ sort: 'ZDF', order: 'desc', pageSize: 20 });
+console.log(themes.items.map(t => `${t.name} ${t.dailyChange}%`));
+
+// 获取行业主题，按近1年收益率排序
+const industryThemes = await sdk.fund.theme.getThemeList({
+  category: '0',
+  sort: 'SYL_Y',
+  order: 'desc',
+});
+```
+
+### 返回说明
+
+返回 `ThemeFundListResult`，含分页元信息与主题条目：
+
+```ts
+interface ThemeFundListResult {
+  items: ThemeFund[];
+  totalPages: number;   // 总页数
+  pageSize: number;     // 每页条数
+  currentPage: number;  // 当前页码
+}
+
+interface ThemeFund {
+  code: string;               // 主题代码，如 'BK0438'
+  name: string;               // 主题名称，如 '食品饮料'
+  dailyChange: number | null; // 日涨幅 %
+  weeklyReturn: number | null;    // 近1周收益率 %
+  monthlyReturn: number | null;   // 近1月收益率 %
+  quarterlyReturn: number | null; // 近3月收益率 %
+  halfYearReturn: number | null;  // 近6月收益率 %
+  yearlyReturn: number | null;    // 近1年收益率 %
+  threeYearReturn: number | null; // 近3年收益率 %
+  fiveYearReturn: number | null;  // 近5年收益率 %
+  type: string;               // '行业' 或 '概念'
+}
+```
+
+## sdk.fund.theme.getHotThemes
+
+获取热门主题排行（东方财富天天基金），按指定排序字段返回 Top 主题列表。
+
+### 参数
+
+```ts
+interface GetHotThemesOptions {
+  /** 排序字段：ZDF(日涨幅)/SYL_W(近1周)/SYL_M(近1月)/SYL_3M(近3月)/SYL_6M(近6月)/SYL_Y(近1年)/SYL_3Y(近3年)/SYL_5Y(近5年)，默认 ZDF */
+  sort?: string;
+  /** 排序方向：desc(降序，默认)/asc(升序) */
+  order?: 'desc' | 'asc';
+  /** 主题类型：'0'(行业)/'1'(概念)/'2'(全部，默认) */
+  category?: '0' | '1' | '2';
+}
+```
+
+### 调用示例
+
+```ts
+// 获取热门主题，按近1周收益率降序
+const hot = await sdk.fund.theme.getHotThemes({ sort: 'SYL_W', order: 'desc' });
+console.log(hot.slice(0, 10).map(t => `${t.name}: weekly ${t.weeklyReturn}%`));
+```
+
+注意：`getHotThemes` 返回直接的 `ThemeFund[]` 数组（不是 `{ items }` 对象），可以直接遍历或切片。
+
+## sdk.fund.theme.getThemeFunds
+
+获取指定主题下的基金排行列表。themeCode 为主题代码（如 `BK0438` = 食品饮料），可通过 `getThemeList` 获取。
+
+### 参数
+
+```ts
+interface GetThemeFundsOptions {
+  /** 排序字段：RZDF(日涨幅)/SYL_Z(近1周)/SYL_Y(近1月)/SYL_3Y(近3月)/SYL_6Y(近6月)/SYL_1N(近1年)/SYL_3N(近3年)/SYL_5N(近5年)，默认 SYL_1N */
+  sortColumn?: string;
+  /** 排序方向：desc(降序，默认)/asc(升序) */
+  sort?: 'desc' | 'asc';
+  /** 每页条数，默认 10，最大 30 */
+  pageSize?: number;
+  /** 页码，默认 1 */
+  page?: number;
+  /** 基金类型筛选，如 '股票型'/'混合型'，空表示全部 */
+  fundType?: string;
+}
+```
+
+### 调用示例
+
+```ts
+// 获取食品饮料主题下近1年收益靠前的基金
+const funds = await sdk.fund.theme.getThemeFunds('BK0438', {
+  sortColumn: 'SYL_1N',
+  sort: 'desc',
+  pageSize: 10,
+});
+funds.items.forEach(f => {
+  console.log(`${f.code} ${f.name}: 1Y return ${f.yearlyReturn}%`);
+});
+```
+
+### 返回说明
+
+```ts
+interface ThemeFundItemList {
+  items: ThemeFundItem[];
+  totalPages: number;
+  pageSize: number;
+  currentPage: number;
+}
+
+interface ThemeFundItem {
+  code: string;
+  name: string;
+  fundType: string;
+  dailyChange: number | null;
+  weeklyReturn: number | null;
+  monthlyReturn: number | null;
+  quarterlyReturn: number | null;
+  yearlyReturn: number | null;
+  nav: number | null;
+  themeCode: string;
+  themeName: string;
+}
+```
 
 ## 注意事项
 

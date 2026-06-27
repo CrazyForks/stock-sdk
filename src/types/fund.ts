@@ -351,3 +351,107 @@ export interface FundProfile {
   /** 同类基金 */
   sameType: FundSameType | null;
 }
+
+// ============================================================
+// 主题基金（Theme Fund）
+// ============================================================
+
+/** 主题基金排序字段（对应 FundMNSubjectList / FundThemeList 的 RankItems） */
+export type ThemeFundSort =
+  | 'ZDF'    // 日涨幅
+  | 'SYL_W'  // 近1周
+  | 'SYL_M'  // 近1月
+  | 'SYL_3M' // 近3月
+  | 'SYL_6M' // 近6月
+  | 'SYL_Y'  // 近1年
+  | 'SYL_3Y' // 近3年
+  | 'SYL_5Y'; // 近5年
+
+/** 主题基金排序方向 */
+export type ThemeFundOrder = 'desc' | 'asc';
+
+/** 主题基金类型筛选 */
+export type ThemeCategory = '0' | '1' | '2'; // 0=行业, 1=概念, 2=全部
+
+/** 获取主题列表选项 */
+export interface GetThemeListOptions {
+  sort?: ThemeFundSort;
+  order?: ThemeFundOrder;
+  category?: ThemeCategory;
+  pageSize?: number;
+  page?: number;
+}
+
+/** 获取热门主题选项 */
+export interface GetHotThemesOptions {
+  sort?: ThemeFundSort;
+  order?: ThemeFundOrder;
+  category?: ThemeCategory;
+  limit?: number;
+}
+
+/** 主题基金排行排序字段（对应 FundMNRank 的 SortColumn） */
+export type ThemeFundRankSort =
+  | 'SYL_Z'   // 近1周
+  | 'SYL_Y'   // 近1月
+  | 'SYL_3Y'  // 近3月
+  | 'SYL_1N'  // 近1年
+  | 'RZDF';   // 日涨幅
+
+/** 获取主题下基金选项 */
+export interface GetThemeFundsOptions {
+  sortColumn?: ThemeFundRankSort;
+  sort?: ThemeFundOrder;
+  pageIndex?: number;
+  pageSize?: number;
+  fundType?: string;
+}
+
+/** 主题基金条目（主题列表） */
+export interface ThemeFund {
+  code: string;
+  name: string;
+  dailyChange: number | null;
+  weeklyReturn: number | null;
+  monthlyReturn: number | null;
+  quarterlyReturn: number | null;
+  halfYearReturn: number | null;
+  yearlyReturn: number | null;
+  threeYearReturn: number | null;
+  fiveYearReturn: number | null;
+  type: '行业' | '概念';
+}
+
+/** 主题基金列表结果 */
+export interface ThemeFundListResult {
+  items: ThemeFund[];
+  totalPages: number;
+  pageSize: number;
+  currentPage: number;
+}
+
+/** 热门主题结果（直接返回数组） */
+export type HotThemesResult = ThemeFund[];
+
+/** 主题下基金条目 */
+export interface ThemeFundItem {
+  code: string;
+  name: string;
+  fundType: string;
+  dailyChange: number | null;
+  weeklyReturn: number | null;
+  monthlyReturn: number | null;
+  quarterlyReturn: number | null;
+  yearlyReturn: number | null;
+  nav: number | null;
+  themeCode: string;
+  themeName: string;
+}
+
+/** 主题下基金列表结果 */
+export interface ThemeFundItemList {
+  items: ThemeFundItem[];
+  total: number;
+  pageIndex: number;
+  pageSize: number;
+}

@@ -63,7 +63,7 @@ If you're a frontend engineer, you may have encountered these problems:
 - ✅ **Technical indicators**: MA / MACD / BOLL / KDJ / RSI / WR / BIAS / CCI / ATR / OBV / ROC / DMI / SAR / KC
 - ✅ **Signals / screener / backtest**: `calcSignals` (golden/death cross, overbought/oversold, etc.), a chainable screener, local backtesting
 - ✅ **Futures / options / fund flow / dragon-tiger list / northbound / block trades / margin / limit-up pool** and more
-- ✅ **Mutual-fund deep data**: NAV history, intraday estimates, peer-ranking trends, fund/ETF dividends
+- ✅ **Mutual-fund deep data**: NAV history, intraday estimates, peer-ranking trends, fund/ETF dividends, **theme funds**
 - ✅ **Subpath exports**: `stock-sdk/{indicators,signals,symbols,screener,cache,errors}` — pure-compute imports don't pull in the network layer (tree-shake friendly)
 - ✅ **Unified error system**: only `SdkError` is thrown to callers, each with a stable `code`, importable from `stock-sdk/errors`
 - ✅ **Request governance**: per-provider retry / rate-limit / circuit-breaker + injectable `fetchImpl` / `signal` / lifecycle `hooks`
@@ -275,7 +275,7 @@ Coverage varies by market — this table helps you quickly check whether the SDK
 | `sdk.marketEvent` | `.ztPool` / `.stockChanges` / `.boardChanges` |
 | `sdk.dragonTiger` | `.detail` / `.stockStats` / `.institution` / `.branchRank` / `.seatDetail` |
 | `sdk.blockTrade` / `sdk.margin` | block trades / margin trading |
-| `sdk.fund` | `.dividendList` / `.navHistory` / `.estimate` / `.rankHistory` / `.profile` |
+| `sdk.fund` | `.dividendList` / `.navHistory` / `.estimate` / `.rankHistory` / `.profile` / `.theme.*` |
 | `sdk.calendar` | `.isTradingDay` / `.nextTradingDay` / `.prevTradingDay` / `.marketStatus` |
 | `sdk.reference` | `.dividendDetail` / `.tradingCalendar` |
 | top-level | `sdk.search(keyword)` |

@@ -12,6 +12,12 @@ import type {
   FundNavHistory,
   FundProfile,
   FundRankHistory,
+  GetThemeListOptions,
+  GetHotThemesOptions,
+  GetThemeFundsOptions,
+  ThemeFundListResult,
+  HotThemesResult,
+  ThemeFundItemList,
 } from '../types';
 import type { RequestClient } from '../core';
 import { BaseService } from './baseService';
@@ -43,7 +49,7 @@ export class FundService extends BaseService {
     return eastmoney.getFundRankHistory(this.client, code);
   }
 
-  /**
+/**
    * 获取基金深度资料（一次请求返回全量字段）。
    *
    * 包含：前十大重仓股、资产配置、仓位测算、基金经理、业绩评价、
@@ -53,5 +59,31 @@ export class FundService extends BaseService {
    */
   getFundProfile(code: string): Promise<FundProfile> {
     return eastmoney.getFundProfile(this.client, code);
+  }
+
+  /** 主题基金子命名空间 */
+  readonly theme: FundThemeService = new FundThemeService(this.client);
+}
+
+/** 主题基金子命名空间 */
+export class FundThemeService {
+  constructor(readonly client: RequestClient) {}
+
+  /** 获取全部主题基金列表 */
+  getThemeList(options?: GetThemeListOptions): Promise<ThemeFundListResult> {
+    return eastmoney.getThemeList(this.client, options);
+  }
+
+  /** 获取热门主题 */
+  getHotThemes(options?: GetHotThemesOptions): Promise<HotThemesResult> {
+    return eastmoney.getHotThemes(this.client, options);
+  }
+
+  /** 获取主题下基金列表 */
+  getThemeFunds(
+    themeCode: string,
+    options?: GetThemeFundsOptions
+  ): Promise<ThemeFundItemList> {
+    return eastmoney.getThemeFunds(this.client, themeCode, options);
   }
 }

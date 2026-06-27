@@ -154,3 +154,13 @@ export { getMarginAccountInfo, getMarginTargetList } from './margin';
 // 龙虎榜：透出参数类型供 service / sdk.ts 引用
 export type { DragonTigerDateOptions } from '../../types/dragonTiger';
 
+// 主题基金
+export {
+  getThemeList,
+  getHotThemes,
+  getThemeFunds,
+  type GetThemeListOptions,
+  type GetHotThemesOptions,
+  type GetThemeFundsOptions,
+} from './fundTheme';
+
