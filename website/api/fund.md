@@ -398,33 +398,6 @@ interface ThemeFund {
 }
 ```
 
-## sdk.fund.theme.getHotThemes
-
-获取热门主题排行（东方财富天天基金），按指定排序字段返回 Top 主题列表。
-
-### 参数
-
-```ts
-interface GetHotThemesOptions {
-  /** 排序字段：ZDF(日涨幅)/SYL_W(近1周)/SYL_M(近1月)/SYL_3M(近3月)/SYL_6M(近6月)/SYL_Y(近1年)/SYL_3Y(近3年)/SYL_5Y(近5年)，默认 ZDF */
-  sort?: string;
-  /** 排序方向：desc(降序，默认)/asc(升序) */
-  order?: 'desc' | 'asc';
-  /** 主题类型：'0'(行业)/'1'(概念)/'2'(全部，默认) */
-  category?: '0' | '1' | '2';
-}
-```
-
-### 调用示例
-
-```ts
-// 获取热门主题，按近1周收益率降序
-const hot = await sdk.fund.theme.getHotThemes({ sort: 'SYL_W', order: 'desc' });
-console.log(hot.slice(0, 10).map(t => `${t.name}: weekly ${t.weeklyReturn}%`));
-```
-
-注意：`getHotThemes` 返回直接的 `ThemeFund[]` 数组（不是 `{ items }` 对象），可以直接遍历或切片。
-
 ## sdk.fund.theme.getThemeFunds
 
 获取指定主题下的基金排行列表。themeCode 为主题代码（如 `BK0438` = 食品饮料），可通过 `getThemeList` 获取。
@@ -433,7 +406,7 @@ console.log(hot.slice(0, 10).map(t => `${t.name}: weekly ${t.weeklyReturn}%`));
 
 ```ts
 interface GetThemeFundsOptions {
-  /** 排序字段：RZDF(日涨幅)/SYL_Z(近1周)/SYL_Y(近1月)/SYL_3Y(近3月)/SYL_6Y(近6月)/SYL_1N(近1年)/SYL_3N(近3年)/SYL_5N(近5年)，默认 SYL_1N */
+  /** 排序字段：SYL_Z(近1周)/SYL_Y(近1月)/SYL_3Y(近3月)/SYL_1N(近1年，默认)/RZDF(日涨幅) */
   sortColumn?: string;
   /** 排序方向：desc(降序，默认)/asc(升序) */
   sort?: 'desc' | 'asc';
@@ -465,9 +438,9 @@ funds.items.forEach(f => {
 ```ts
 interface ThemeFundItemList {
   items: ThemeFundItem[];
-  totalPages: number;
+  total: number;
+  pageIndex: number;
   pageSize: number;
-  currentPage: number;
 }
 
 interface ThemeFundItem {
@@ -481,7 +454,7 @@ interface ThemeFundItem {
   yearlyReturn: number | null;
   nav: number | null;
   themeCode: string;
-  themeName: string;
+  themeName?: string; // 上游不返回，通常缺省
 }
 ```
 

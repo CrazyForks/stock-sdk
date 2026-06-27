@@ -1,7 +1,7 @@
 /**
  * Integration tests for theme fund API (real network requests)
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { StockSDK } from '../../../src';
 
 const sdk = new StockSDK();
@@ -17,14 +17,6 @@ describe.skipIf(!process.env.RUN_INTEGRATION)(
       expect(result.items[0].code).toMatch(/^BK\d{4}$/);
       expect(result.items[0].name).toBeDefined();
       expect(result.items[0].type).toMatch(/^行业|概念$/);
-    });
-
-    it('should fetch hot themes successfully', async () => {
-      const result = await sdk.fund.theme.getHotThemes({ limit: 10 });
-
-      expect(Array.isArray(result)).toBe(true);
-      expect(result.length).toBeGreaterThan(0);
-      expect(result[0].code).toMatch(/^BK\d{4}$/);
     });
 
     it('should fetch funds by theme code', async () => {
@@ -47,9 +39,10 @@ describe.skipIf(!process.env.RUN_INTEGRATION)(
     });
 
     it('should handle invalid theme code gracefully', async () => {
-      await expect(
-        sdk.fund.theme.getThemeFunds('INVALID_CODE')
-      ).rejects.toThrow();
+      // 非法主题代码：上游返回空集，SDK 优雅降级为空列表而非抛异常
+      const result = await sdk.fund.theme.getThemeFunds('INVALID_CODE');
+      expect(Array.isArray(result.items)).toBe(true);
+      expect(typeof result.total).toBe('number');
     });
   },
   30000

@@ -4,7 +4,7 @@
 > 单一事实源）与 `src/types` 自动生成，目的是让 AI 工具**一次性读取** stock-sdk 的全部
 > 命名空间方法、参数与返回数据结构。**请勿手改本文件**——改 spec / types 后重新生成。
 >
-> 版本：v2.1.0 · 文档站：https://stock-sdk.linkdiary.cn · npm: `npm i stock-sdk`
+> 版本：v2.2.0 · 文档站：https://stock-sdk.linkdiary.cn · npm: `npm i stock-sdk`
 
 ## 这是什么
 
@@ -44,7 +44,7 @@ import { screen, backtest } from 'stock-sdk/screener';
 
 ### 安装与模块格式
 
-- 最新版：`npm i stock-sdk`（当前 v2.1.0）
+- 最新版：`npm i stock-sdk`（当前 v2.2.0）
 - v1 旧版（已封存）：`npm i stock-sdk@legacy`
 - **ESM + CommonJS** 双格式；主包 `import { StockSDK } from 'stock-sdk'`
 - 纯计算 subpath：`stock-sdk/{indicators,signals,symbols,screener,cache,errors,mcp}`（tree-shake 友好，不拖入全部 provider）
@@ -96,7 +96,7 @@ Cursor / Claude Desktop 等配置 `mcpServers`：`{ "command": "npx", "args": ["
 
 ---
 
-## 一、命名空间方法（共 89 个）
+## 一、命名空间方法（共 88 个）
 
 > 形如 `sdk.quotes.cn(codes)` / `sdk.kline.cn(symbol, options?)`；`codes[]` 形态的方法第一个参数为 **string[]**。
 > 标注 **CLI 专属** 的参数/flag 不应传入 SDK options（除非文档明确说明 SDK 消费）。
@@ -407,13 +407,9 @@ Cursor / Claude Desktop 等配置 `mcpServers`：`{ "command": "npx", "args": ["
     - `options.category` (0 | 1 | 2, 默认 2, SDK / MCP): 主题类型：0(行业)/1(概念)/2(全部，默认)
     - `options.pageSize` (number, SDK / MCP): 每页条数，默认20，最大50
     - `options.page` (number, SDK / MCP): 页码，默认1
-- **`sdk.fund.theme.getHotThemes(options?)`** — 获取热门主题基金排行（东方财富天天基金），按RankItems排序的热门主题列表，返回主题代码(code)、名称(name)、日涨幅及各阶段收益率。category=0(行业)/1(概念)/2(全部，默认)。
-    - `options.sort` (string, SDK / MCP): 排序字段：ZDF(日涨幅)/SYL_W(近1周)/SYL_M(近1月)/SYL_3M(近3月)/SYL_6M(近6月)/SYL_Y(近1年)/SYL_3Y(近3年)/SYL_5Y(近5年)，默认ZDF
-    - `options.order` (desc | asc, 默认 desc, SDK / MCP): 排序方向：desc(降序，默认)/asc(升序)
-    - `options.category` (0 | 1 | 2, 默认 2, SDK / MCP): 主题类型：0(行业)/1(概念)/2(全部，默认)
-- **`sdk.fund.theme.getThemeFunds(symbol, options?)`** — 获取指定主题主题下的基金排行列表（东方财富天天基金）。themeCode为主题代码（如BK0438=食品饮料）。可按日涨幅/各阶段收益率排序分页，返回基金代码、名称、基金类型、日涨幅及各阶段收益率、最新净值。
+- **`sdk.fund.theme.getThemeFunds(symbol, options?)`** — 获取指定主题下的基金排行列表（东方财富天天基金）。themeCode为主题代码（如BK0438=食品饮料）。可按日涨幅/各阶段收益率排序分页，返回基金代码、名称、基金类型、日涨幅及各阶段收益率、最新净值。
     - `symbol` (位置参数, 必填): 主题代码，如 BK0438（食品饮料）
-    - `options.sortColumn` (string, SDK / MCP): 排序字段：RZDF(日涨幅)/SYL_Z(近1周)/SYL_Y(近1月)/SYL_3Y(近3月)/SYL_6Y(近6月)/SYL_1N(近1年)/SYL_3N(近3年)/SYL_5N(近5年)，默认SYL_1N
+    - `options.sortColumn` (string, SDK / MCP): 排序字段：SYL_Z(近1周)/SYL_Y(近1月)/SYL_3Y(近3月)/SYL_1N(近1年，默认)/RZDF(日涨幅)
     - `options.sort` (desc | asc, 默认 desc, SDK / MCP): 排序方向：desc(降序，默认)/asc(升序)
     - `options.pageSize` (number, SDK / MCP): 每页条数，默认10，最大30
     - `options.page` (number, SDK / MCP): 页码，默认1
@@ -1859,7 +1855,7 @@ export type ThemeFundRankSort =
 export interface GetThemeFundsOptions {
   sortColumn?: ThemeFundRankSort;
   sort?: ThemeFundOrder;
-  pageIndex?: number;
+  page?: number;
   pageSize?: number;
   fundType?: string;
 }
@@ -1902,7 +1898,8 @@ export interface ThemeFundItem {
   yearlyReturn: number | null;
   nav: number | null;
   themeCode: string;
-  themeName: string;
+  /** 主题名称：上游 FundMNRank 不返回，通常缺省，调用方可用 themeCode 自行映射 */
+  themeName?: string;
 }
 
 /** 主题下基金列表结果 */

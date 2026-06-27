@@ -3,7 +3,6 @@
  *
  * 数据源：https://fundmobapi.eastmoney.com/FundMNewApi/
  */
-import { SdkError } from '../../core/errors';
 import { toFiniteNumberOrNull } from '../../core/parser';
 import type { RequestClient } from '../../core/request';
 import type {
@@ -179,7 +178,7 @@ export async function getThemeFunds(
 ): Promise<ThemeFundItemList> {
   const sortColumn = options.sortColumn ?? 'SYL_1N';
   const sort = options.sort ?? 'desc';
-  const pageIndex = options.pageIndex ?? 1;
+  const page = options.page ?? 1;
   const pageSize = options.pageSize ?? 20;
   const fundType = options.fundType ?? '';
 
@@ -188,7 +187,7 @@ export async function getThemeFunds(
     TOPICAL: themeCode,
     SortColumn: sortColumn,
     Sort: sort,
-    pageIndex: String(pageIndex),
+    pageIndex: String(page),
     pageSize: String(pageSize),
     FundType: fundType,
   });
@@ -218,7 +217,7 @@ export async function getThemeFunds(
   });
 
   const data = payload.Data ?? [];
-  const fundInfo = payload.fundinfo ?? { total: 0, pagesize: pageSize, pageindex: pageIndex };
+  const fundInfo = payload.fundinfo ?? { total: 0, pagesize: pageSize, pageindex: page };
 
   const items: ThemeFundItem[] = data.map((item: NonNullable<typeof payload.Data>[number]) => ({
     code: item.fscode ?? '',
@@ -230,14 +229,14 @@ export async function getThemeFunds(
     quarterlyReturn: toFiniteNumberOrNull(item.SYL_3Y),
     yearlyReturn: toFiniteNumberOrNull(item.SYL_1N),
     nav: toFiniteNumberOrNull(item.dwjz),
+    // themeName 省略：上游 FundMNRank 不返回主题名称，仅回填 themeCode，调用方自行映射
     themeCode: themeCode,
-    themeName: '', // 上游不返回主题名称，调用方需自行维护映射
   }));
 
   return {
     items,
     total: fundInfo.total ?? 0,
-    pageIndex: fundInfo.pageindex ?? pageIndex,
+    pageIndex: fundInfo.pageindex ?? page,
     pageSize: fundInfo.pagesize ?? pageSize,
   };
 }

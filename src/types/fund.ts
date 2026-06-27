@@ -402,7 +402,7 @@ export type ThemeFundRankSort =
 export interface GetThemeFundsOptions {
   sortColumn?: ThemeFundRankSort;
   sort?: ThemeFundOrder;
-  pageIndex?: number;
+  page?: number;
   pageSize?: number;
   fundType?: string;
 }
@@ -445,7 +445,8 @@ export interface ThemeFundItem {
   yearlyReturn: number | null;
   nav: number | null;
   themeCode: string;
-  themeName: string;
+  /** 主题名称：上游 FundMNRank 不返回，通常缺省，调用方可用 themeCode 自行映射 */
+  themeName?: string;
 }
 
 /** 主题下基金列表结果 */
