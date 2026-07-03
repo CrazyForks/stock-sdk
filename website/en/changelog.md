@@ -6,6 +6,23 @@ pageClass: changelog-page
 
 This page records the release history of Stock SDK. v2.0.0 is an **architectural leap** — without adding data sources, it reworks the symbol model, data contract, API surface, request layer, and error system, and adds a CLI / MCP and subpath exports.
 
+## v2.2.1
+
+> Released: 2026-07-03
+
+### Added
+
+- **Special Eastmoney index support** (reworked from [#51](https://github.com/chengzuopeng/stock-sdk/pull/51), thanks [@wubh2012](https://github.com/wubh2012)): CSI indices recognized by code shape (`93xxxx` / `H`+5 digits, e.g. `930955`, `H30533`, secid prefix `2.`, via `kline.cn`); named indices `HSHCI` (Hang Seng Healthcare Index, `124.`, via `kline.hk`) and `GDAXI` (German DAX, `100.`, via the `kline.us('100.GDAXI')` raw-secid passthrough). The secid forms (`2.930955`, etc.) are valid inputs and round-trip.
+
+### Fixed
+
+- CSI indices were previously inferred as "starts with 9 → Shanghai", building secids like `1.930955` that returned silently empty klines; shape-based recognition fixes the whole family (including future codes) at once.
+
+### Changed
+
+- Special-index code shapes are **syntax-certain** classifications: conflicting hints and prefix / suffix assertions (`sh930955`, `hkHSHCI`, etc.) throw `InvalidSymbolError` with guidance, while explicit assertions like `usGDAXI` and `1.930955` keep their original meaning. `marketOf('HSHCI')` becomes `'HK'`, `marketOf('GDAXI')` becomes `'GLOBAL'`.
+- Unsupported paths fail fast uniformly (previously silent empty arrays or guaranteed-empty queries): `toTencentSymbol` / CLI `quote` / `fundFlow.individual` reject special indices, and auto-routing entries give a raw-secid hint for `GLOBAL` symbols. Known limitations: see the [symbols guide](/en/guide/symbols).
+
 ## v2.2.0
 
 > Released: TBD

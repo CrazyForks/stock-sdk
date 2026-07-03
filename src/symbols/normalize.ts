@@ -97,8 +97,7 @@ const EXCHANGE_MARKET: Partial<Record<Exchange, Market>> = {
   NYSE: 'US',
   AMEX: 'US',
   US: 'US',
-  // 特殊指数机构:从 specialIndex.ts 派生(单源,与期货同款做法),
-  // 注册表新增 exchange 时跨市场 hint 校验自动覆盖
+  // 特殊指数机构:从 specialIndex.ts 派生(单源,与下方期货同款做法)
   ...Object.fromEntries(SPECIAL_INDEX_EXCHANGE_MARKET),
   ...Object.fromEntries(
     Object.values(FUTURES_EXCHANGES).map((fx) => [fx.exchange, fx.market])
@@ -229,8 +228,7 @@ export function normalizeSymbol(
     };
   };
 
-  // 特殊指数三轴均语法确定;裸码与 secid 回读两个入口共用本 helper,
-  // 保证两种输入形态的 certainty 语义永不分叉
+  // 特殊指数三轴语法确定;裸码与 secid 回读共用,certainty 语义不分叉
   const finishSpecialIndex = (idx: SpecialIndexInfo): NormalizedSymbol =>
     finish(idx.market, idx.exchange, idx.code, 'index', undefined, {
       exchange: true,
@@ -254,11 +252,8 @@ export function normalizeSymbol(
     const upperLeft = left.toUpperCase();
     const upperRight = right.toUpperCase();
 
-    // 特殊指数 secid 回读('2.930955' / '2.H30533' / '124.HSHCI' / '100.GDAXI'):
-    // 仅当数字前缀与注册表一致时按指数解析,保证 toEastmoneySecid 的产出可回读;
-    // 前缀不一致('1.930955')维持显式前缀语义走 SECID_MAP,不被注册表覆盖。
-    // 2/100/124 承载的其余代码(如 '100.N225')不在注册表 → 维持原有解析失败行为。
-    // (注册表前缀恒为纯数字,非数字 left 的相等比较自然失败,无需前置数字判断)
+    // 特殊指数 secid 回读:仅当前缀与注册表一致时按指数解析('1.930955' 等
+    // 显式其它前缀维持 SECID_MAP 语义,'100.N225' 等未注册码维持解析失败)
     const dottedSpecialIdx = lookupSpecialIndex(right);
     if (dottedSpecialIdx && dottedSpecialIdx.secidPrefix === left) {
       return finishSpecialIndex(dottedSpecialIdx);
@@ -301,10 +296,8 @@ export function normalizeSymbol(
       ? PREFIX_MAP[suffixKey]
       : undefined;
     if (suffix) {
-      // 特殊指数码形不属于任何交易所股票命名空间:'.SH/.SZ/.BJ/.HK' 后缀断言
-      // 与注册表分类矛盾 —— 与 hint 轴('930955'+{exchange:'SSE'} 抛错)口径
-      // 一致地拒绝并给出指引,而非拼出 '1.930955'/'116.HSHCI' 这类上游静默
-      // 返空的 secid;'.US' 后缀除外(纯字母码是真实美股 ticker 命名空间)
+      // 特殊指数码形与 .SH/.SZ/.BJ/.HK 后缀断言矛盾 → 与 hint 轴同口径拒绝
+      // 并指引('.US' 除外:纯字母码属真实美股 ticker 命名空间)
       if (suffix.market === 'CN' || suffix.market === 'HK') {
         const idx = lookupSpecialIndex(left);
         if (idx) {
@@ -353,10 +346,8 @@ export function normalizeSymbol(
       const restOk =
         s.market === 'CN' ? /^\d+$/.test(rest) : /^[0-9A-Za-z]+$/.test(rest);
       if (restOk) {
-        // 特殊指数码形不属于任何交易所股票命名空间:sh/sz/bj/hk 前缀的交易所
-        // 断言与注册表分类矛盾(CSI 非 A 股交易所股票、HSHCI 非 HKEX 数字码),
-        // 与后缀/hint 轴同口径拒绝并给出指引;us 前缀除外 —— 纯字母码是真实
-        // 美股 ticker 命名空间,'usGDAXI' 维持显式美股断言语义(测试钉住)
+        // 特殊指数码形与 sh/sz/bj/hk 前缀断言矛盾 → 与后缀/hint 轴同口径拒绝
+        // 并指引(us 前缀除外:纯字母码属真实美股 ticker 命名空间)
         if (s.market === 'CN' || s.market === 'HK') {
           const idx = lookupSpecialIndex(rest);
           if (idx) {
@@ -381,11 +372,8 @@ export function normalizeSymbol(
     }
   }
 
-  // 3) 特殊指数（中证 93xxxx / H+5 位 → CSI，HSHCI/GDAXI 具名）：须先于纯数字
-  //    分支，否则 93xxxx 会被 inferAShareExchange 按「9 开头→沪」误判为 SSE 股票，
-  //    拼出 '1.930955' 这类上游静默返回空数据的 secid。码形语法确定三轴 →
-  //    矛盾 hint 一律抛错（与 R3-5 同轴语义；'H30533'+{assetType:'futures'}
-  //    不再落入期货分支按 SHFE 'H' 合约解析——该码形无真实合约对应）。
+  // 3) 特殊指数：须先于纯数字分支，否则 93xxxx 被 inferAShareExchange 按
+  //    「9 开头→沪」误判，拼出 '1.930955' 这类上游静默返空的 secid
   const specialIdx = lookupSpecialIndex(code0);
   if (specialIdx) {
     return finishSpecialIndex(specialIdx);

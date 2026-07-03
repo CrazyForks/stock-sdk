@@ -58,10 +58,7 @@ describe('FundFlow - getIndividualFundFlow', () => {
     ).rejects.toThrow(/Invalid period/);
   });
 
-  // 特殊指数(CSI/HSI/DAX)无个股资金流数据:统一 fail-fast 为 InvalidArgumentError,
-  // 不发请求、不静默返 [];HSHCI/GDAXI 属非 CN 市场,若不收敛会在 normalize 的
-  // CN hint 冲突处抛出提及内部 hint 的 InvalidSymbolError,错误类/口径须与 CN
-  // 特殊指数一致(守卫在请求前抛错,MSW 未挂 handler 即为"未发请求"的佐证)
+  // 特殊指数无个股资金流数据:统一 InvalidArgumentError,请求前 fail-fast
   it.each(['930955', 'H30533', 'HSHCI', 'GDAXI', '124.HSHCI', '100.GDAXI', '2.930955'])(
     'rejects special index %s with a uniform InvalidArgumentError before any request',
     async (code) => {

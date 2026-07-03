@@ -6,6 +6,23 @@ pageClass: changelog-page
 
 本页记录 Stock SDK 的版本更新历史。v2.0.0 是一次**架构跃迁**——在不扩展数据源的前提下，重做了符号模型、数据契约、API 表面、请求层与错误体系，并新增 CLI / MCP 与 subpath 导出。
 
+## v2.2.1
+
+> 发布时间：2026-07-03
+
+### 新增
+
+- **东方财富特殊指数支持**（基于 [#51](https://github.com/chengzuopeng/stock-sdk/pull/51) 重构，感谢 [@wubh2012](https://github.com/wubh2012)）：中证指数按码形识别（`93xxxx` / `H`+5 位，如 `930955`、`H30533`，secid 前缀 `2.`，经 `kline.cn` 使用）；具名指数 `HSHCI`（恒生医疗保健指数，`124.`，经 `kline.hk`）与 `GDAXI`（德国 DAX，`100.`，经 `kline.us('100.GDAXI')` raw-secid 直通）。对应 secid 形（`2.930955` 等）成为合法输入且产出可回读。
+
+### 修复
+
+- 中证指数此前被按「9 开头 → 沪市」推断拼出 `1.930955` 类 secid，K 线静默返回空数组；按码形识别后全家族（含未来新码）一次修复。
+
+### 行为变更
+
+- 特殊指数码形为**语法确定**分类：矛盾 hint 与前缀 / 后缀断言（`sh930955`、`hkHSHCI` 等）抛 `InvalidSymbolError` 并给出指引；`usGDAXI`、`1.930955` 等显式断言保持原语义。`marketOf('HSHCI')` 变为 `'HK'`，`marketOf('GDAXI')` 变为 `'GLOBAL'`。
+- 不支持场景统一 fail-fast（此前静默空数组或必空查询）：`toTencentSymbol` / CLI `quote` / `fundFlow.individual` 对特殊指数报错，自动路由入口对 `GLOBAL` 符号给出 raw-secid 指引。已知限制见[符号指南](/guide/symbols)。
+
 ## v2.2.0
 
 > 发布时间：待发布

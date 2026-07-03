@@ -102,8 +102,7 @@ const LIMIT_OPT: OptionSpec = { flag: 'limit', type: 'number', desc: '只取前 
  */
 function detectMarketTag(symbol: string): 'a' | 'hk' | 'us' {
   const market = marketOf(symbol);
-  // GLOBAL(GDAXI 等海外特殊指数)无对应市场标签:归 'a' 会在 provider 内部
-  // 因 {market:'CN'} hint 冲突抛出误导性错误,这里直接给出可行动的指引
+  // GLOBAL(GDAXI 等)无自动路由标签:直接给出 raw-secid 指引
   if (market === 'GLOBAL') {
     throw new CliUsageError(
       `暂不支持自动路由 GLOBAL 市场符号: ${symbol}`,
@@ -219,10 +218,7 @@ export const ALIAS_COMMANDS: CommandSpec[] = [
             ? normalizeSymbol(c, { market: tagToMarket(forced) })
             : normalizeSymbol(c);
           if (!forced) tag = ns.market === 'HK' ? 'hk' : ns.market === 'US' ? 'us' : 'a';
-          // 特殊指数(CSI/HSI/DAX)无腾讯行情映射:'a' 组的 toTencentSymbol 会抛
-          // InvalidArgumentError(下方 catch 不重抛该类,原码透传成必空垃圾查询),
-          // 'hk' 组则不经过该转换、直接拼出 hkHSHCI —— 统一在分组前拦截,
-          // 浮出可行动错误而非静默空行
+          // 特殊指数无腾讯行情映射(a 组会抛错被吞、hk 组会拼 hkHSHCI)→ 分组前拦截
           if (ns.assetType === 'index' && lookupSpecialIndex(ns.code)) {
             throw new CliUsageError(
               `特殊指数 ${ns.code} 无行情接口`,

@@ -291,10 +291,8 @@ export async function getIndividualFundFlow(
   try {
     ns = normalizeSymbol(symbol, { market: 'CN' });
   } catch (e) {
-    // HSHCI/GDAXI 及其 secid 形('124.HSHCI'/'100.GDAXI')等非 CN 特殊指数
-    // 在 CN hint 冲突处抛 InvalidSymbolError(消息含调用方并未传过的内部
-    // hint)—— 收敛为与下方 CN 特殊指数守卫同一错误类与口径;secid 形取点后
-    // 裸码查注册表
+    // 非 CN 特殊指数(HSHCI/GDAXI 及其 secid 形)在 hint 冲突处抛错,
+    // 收敛为与下方守卫同一错误类与口径
     const bareCode = symbol.includes('.')
       ? symbol.slice(symbol.indexOf('.') + 1)
       : symbol;
@@ -305,10 +303,7 @@ export async function getIndividualFundFlow(
     }
     throw e;
   }
-  // 本接口按交易所宿主 secid 服务(同文件 getMarketFundFlow 即以 1.000001 /
-  // 0.399001 查指数资金流),真正无数据的是无交易所宿主 secid 的特殊指数
-  // (CSI/HSI/DAX)—— 按注册表命中判断而非 assetType 轴,fail-fast 而非
-  // 拼出 secid 后静默返回空数组
+  // 仅特殊指数无本接口数据(交易所宿主指数如 1.000001 有,见 getMarketFundFlow)
   if (ns.assetType === 'index' && lookupSpecialIndex(ns.code)) {
     throw new InvalidArgumentError(
       `Individual fund flow is not available for index symbols: ${symbol}`

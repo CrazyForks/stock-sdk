@@ -64,10 +64,7 @@ describe('toEastmoneySecid', () => {
     ).toBe('1.930955');
   });
 
-  // 现状记录(非契约背书):注册表未命中的普通指数走交易所前缀 fall-through。
-  // 沪市宿主的 000xxx 指数在该路径下已知错宿主(东财实为 '1.000300',见
-  // fundFlow getMarketFundFlow 的 1.000001),待 index 感知的交易所推断修复后
-  // 本断言应更新为 '1.000300'。
+  // 现状记录(非契约):沪市 000xxx 指数错宿主(应为 1.000300),待修后更新断言
   it("普通指数 fall-through 现状:'000300'+{assetType:'index'} → '0.000300'(已知错宿主,待修)", () => {
     expect(toEastmoneySecid(normalizeSymbol('000300', { assetType: 'index' }))).toBe(
       '0.000300'
