@@ -1,13 +1,7 @@
 import { BIASOptions, BIASResult } from './types';
 import { calcSMA } from './ma';
+import { round } from './round';
 
-/**
- * 统一精度处理
- */
-function round(value: number, decimals: number = 3): number {
-  const factor = Math.pow(10, decimals);
-  return Math.round(value * factor) / factor;
-}
 
 /**
  * 计算乖离率 BIAS
@@ -22,12 +16,12 @@ export function calcBIAS(
   closes: (number | null)[],
   options: BIASOptions = {}
 ): BIASResult[] {
-  const { periods = [6, 12, 24] } = options;
+  const { periods = [6, 12, 24], decimals } = options;
 
   const biasArrays: { [key: string]: (number | null)[] } = {};
 
   for (const period of periods) {
-    const ma = calcSMA(closes, period);
+    const ma = calcSMA(closes, period, decimals);
     const bias: (number | null)[] = [];
 
     for (let i = 0; i < closes.length; i++) {
@@ -35,7 +29,7 @@ export function calcBIAS(
         bias.push(null);
       } else {
         const biasValue = ((closes[i]! - ma[i]!) / ma[i]!) * 100;
-        bias.push(round(biasValue));
+        bias.push(round(biasValue, decimals));
       }
     }
 

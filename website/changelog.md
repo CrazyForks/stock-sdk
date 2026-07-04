@@ -6,6 +6,19 @@ pageClass: changelog-page
 
 本页记录 Stock SDK 的版本更新历史。v2.0.0 是一次**架构跃迁**——在不扩展数据源的前提下，重做了符号模型、数据契约、API 表面、请求层与错误体系，并新增 CLI / MCP 与 subpath 导出。
 
+## v2.2.2
+
+> 发布时间：2026-07-04
+
+### 新增
+
+- **指标输出精度选项 `decimals`**：舍入型指标（ma / macd / boll / kdj / rsi / wr / bias / cci / atr）的 options 新增 `decimals?: number`，按需指定输出小数位（如 `calcMA(closes, { periods: [5], decimals: 2 })`），SDK / `kline.withIndicators` / MCP 全链路可用。
+
+### 行为变更
+
+- **指标输出默认精度 2 位 → 3 位小数**（基于 [#55](https://github.com/chengzuopeng/stock-sdk/pull/55)，感谢 [@Ahaochan](https://github.com/Ahaochan)）：低价标的（如 3 元 ETF）的均线曲线不再因精度不足呈阶梯状。注意这不只是"多一位小数"：MACD / BOLL / BIAS 消费内部已舍入的 EMA/SMA 中间值，重舍回 2 位后部分数值在**第 2 位**即与旧版不同（实测约半数 MACD 柱值受影响，金叉/死叉可能偏移 ±1 根），KC 亦随内部 EMA/ATR 精度联动；依赖指标数值快照/缓存的回测请重新校准。9 份重复的 `round()` 已收编为共享模块（`decimals` 默认值单点维护）。
+- obv / roc / dmi / sar / kc 输出维持裸浮点（不舍入），与既有行为一致。
+
 ## v2.2.1
 
 > 发布时间：2026-07-03
@@ -25,7 +38,7 @@ pageClass: changelog-page
 
 ## v2.2.0
 
-> 发布时间：待发布
+> 发布时间：2026-06-27
 
 ### 新增
 

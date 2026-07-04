@@ -50,7 +50,7 @@ interface IndicatorDescriptor<K extends IndicatorKey = IndicatorKey> {
    * 平滑/递推状态型指标(如 KDJ/RSI 的 Wilder 平滑、MACD 的 EMA 链):
    * 每根值递推依赖前一根的内部状态,切片起点不同则状态不同 —— 消费方
    * (indicatorService 的 refetch 切片)需按 15× 周期暖机让状态收敛到
-   * round(2) 之下。与 cumulative 同为「消费方策略由 registry 声明」的机制
+   * round(3) 之下。与 cumulative 同为「消费方策略由 registry 声明」的机制
    * (R3-12):纯窗口型指标(SMA/BOLL/WR 等)只看固定窗口,无需暖机放大。
    * ma 特殊:仅 type:'ema' 才递归,由 estimateLookback 的 emaBased 动态承担,
    * 故 ma 不静态标记 recursive。

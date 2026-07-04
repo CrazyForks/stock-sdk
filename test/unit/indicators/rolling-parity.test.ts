@@ -4,12 +4,12 @@
  * 把改写前的「逐窗重算」实现以本地副本(ref*)形式固化在本文件作 reference，
  * 用确定性伪随机序列(线性同余、固定种子,含 null 间隙/平段/剧烈波动)
  * 与真实形态序列,断言新实现(滑窗 rolling / 单调队列)与旧实现逐值全等：
- * - sma/ema/wma/boll/cci/kdj/atr 输出本身已 round(·,2)，直接 toEqual；
- * - obv.obvMa / roc.signal 旧实现不舍入(裸浮点)，对拍前两侧统一 round(·,2)
+ * - sma/ema/wma/boll/cci/kdj/atr 输出本身已 round(·,3)，直接 toEqual；
+ * - obv.obvMa / roc.signal 旧实现不舍入(裸浮点)，对拍前两侧统一 round(·,3)
  *   (rolling 与逐窗的求和顺序不同，裸浮点允许 ~1ulp 差异，round 后须全等)。
  *
  * 数据域说明：序列用**全精度浮点**价格(不量化到 2 位小数)。若把价格量化成
- * 2 位小数，窗口均值会大量**恰好**落在 x.xx5 半分位上 —— 这类刀尖值的舍入
+ * 2 位小数，窗口均值会大量**恰好**落在 x.xxx5 舍入半步上 —— 这类刀尖值的舍入
  * 方向在旧实现里本身就由求和顺序的 ±1ulp 残差决定(同一窗口换个加法次序也
  * 会翻)，不构成可对拍的行为契约；全精度输入下 .005 边界是零测度，
  * 1ulp 级差异不可能翻转舍入,对拍即为逐值位级契约。详见 ma.ts
@@ -47,7 +47,7 @@ import type { ROCResult } from '../../../src/indicators/roc';
 // reference：改写前(commit e8d7f3b 一代)的逐窗实现，原样拷贝
 // ============================================================
 
-function round(value: number, decimals: number = 2): number {
+function round(value: number, decimals: number = 3): number {
   const factor = Math.pow(10, decimals);
   return Math.round(value * factor) / factor;
 }
@@ -487,7 +487,7 @@ const ohlcvB = buildOhlcv(closesB, 7);
 const ohlcvSets = [ohlcvA, ohlcvB];
 
 /**
- * 对裸浮点输出(obvMa/roc/signal)统一 round(·,2) 后再比对。
+ * 对裸浮点输出(obvMa/roc/signal)统一 round(·,3) 后再比对。
  * -0 归一为 0：平段上 roc 全为精确 0，逐窗求和得 +0,而 rolling 出窗残差可能是
  * -1e-16 → round 后 -0;数值差 1e-16 无语义,但 toEqual 区分 ±0。
  */

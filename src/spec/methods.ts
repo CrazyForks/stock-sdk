@@ -642,7 +642,9 @@ export const METHOD_SPECS: MethodSpec[] = [
       'indicators 为对象，键取自 14 个指标：ma / macd / boll / kdj / rsi / wr / bias / cci / ' +
       'atr / obv / roc / dmi / sar / kc，每个键传 true 即用默认参数开启，或传配置对象' +
       '（如 { ma: { periods: [5,10,20] }, macd: { short: 12, long: 26, signal: 9 } }）。' +
-      'SDK 会按指标依赖自动向前多取若干 bar 保证首日有效。',
+      'SDK 会按指标依赖自动向前多取若干 bar 保证首日有效。' +
+      '舍入型指标(ma/macd/boll/kdj/rsi/wr/bias/cci/atr)可传 decimals 指定输出小数位' +
+      '(默认 3;obv/roc/dmi/sar/kc 输出不舍入)。',
     argShape: 'symbol+options',
     positional: [SYMBOL_REQ('股票代码（A 股 / 港股 / 美股）')],
     params: [PERIOD_DWM, ADJUST, START, END, MARKET_ENUM, ...INDICATOR_PARAMS],

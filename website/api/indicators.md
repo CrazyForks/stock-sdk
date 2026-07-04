@@ -27,6 +27,10 @@ interface OHLCV {
 
 > K 线接口返回的对象已带 `open/high/low/close/volume`，可直接喂给 OHLCV 类函数；收盘价类函数则取 `klines.map(k => k.close)`。
 
+## 输出精度
+
+舍入型指标（`calcMA` / `calcMACD` / `calcBOLL` / `calcKDJ` / `calcRSI` / `calcWR` / `calcBIAS` / `calcCCI` / `calcATR`）输出默认舍入到 **3 位小数**，可经各自 options 的 `decimals` 调整（如 `calcMA(closes, { periods: [5], decimals: 2 })`）；`calcOBV` / `calcROC` / `calcDMI` / `calcSAR` / `calcKC` 输出不舍入（裸浮点）。
+
 ## 方法表
 
 | 函数 | 说明 |
@@ -58,7 +62,7 @@ import { calcMA } from 'stock-sdk/indicators'
 
 const closes = klines.map(k => k.close)
 const ma = calcMA(closes, { periods: [5, 10, 20], type: 'sma' })
-// ma[last] => { ma5: 1712.3, ma10: 1698.1, ma20: 1675.4 }
+// ma[last] => { ma5: 1712.303, ma10: 1698.126, ma20: 1675.418 }
 ```
 
 ## calcMACD
@@ -91,7 +95,7 @@ const boll = calcBOLL(closes, { period: 20, stdDev: 2 })
 import { calcKDJ } from 'stock-sdk/indicators'
 
 const kdj = calcKDJ(klines, { period: 9 })
-// kdj[last] => { k: 82.1, d: 75.6, j: 95.1 }
+// kdj[last] => { k: 82.137, d: 75.611, j: 95.189 }
 ```
 
 ## calcRSI
@@ -102,7 +106,7 @@ const kdj = calcKDJ(klines, { period: 9 })
 import { calcRSI } from 'stock-sdk/indicators'
 
 const rsi = calcRSI(closes, { periods: [6, 12, 24] })
-// rsi[last] => { rsi6: 71.2, rsi12: 64.8, rsi24: 58.3 }
+// rsi[last] => { rsi6: 71.235, rsi12: 64.802, rsi24: 58.341 }
 ```
 
 ## calcWR
@@ -146,7 +150,7 @@ const cci = calcCCI(klines, { period: 14 })
 import { calcATR } from 'stock-sdk/indicators'
 
 const atr = calcATR(klines, { period: 14 })
-// atr[last] => { tr: 24.5, atr: 21.3 }
+// atr[last] => { tr: 24.5, atr: 21.307 }
 ```
 
 ## calcOBV

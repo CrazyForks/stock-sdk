@@ -1,12 +1,6 @@
 import { RSIOptions, RSIResult } from './types';
+import { round } from './round';
 
-/**
- * 统一精度处理
- */
-function round(value: number, decimals: number = 3): number {
-  const factor = Math.pow(10, decimals);
-  return Math.round(value * factor) / factor;
-}
 
 /**
  * 计算 RSI 指标
@@ -15,7 +9,7 @@ export function calcRSI(
   closes: (number | null)[],
   options: RSIOptions = {}
 ): RSIResult[] {
-  const { periods = [6, 12, 24] } = options;
+  const { periods = [6, 12, 24], decimals } = options;
 
   // 计算涨跌幅
   const changes: (number | null)[] = [null];
@@ -69,7 +63,7 @@ export function calcRSI(
         rsi.push(0);
       } else {
         const rs = avgGain / avgLoss;
-        rsi.push(round(100 - 100 / (1 + rs)));
+        rsi.push(round(100 - 100 / (1 + rs), decimals));
       }
     }
 

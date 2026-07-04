@@ -27,6 +27,10 @@ interface OHLCV {
 
 > K-line objects already carry `open/high/low/close/volume`, so they can be fed directly to OHLCV functions; for close-only functions, take `klines.map(k => k.close)`.
 
+## Output precision
+
+Rounding indicators (`calcMA` / `calcMACD` / `calcBOLL` / `calcKDJ` / `calcRSI` / `calcWR` / `calcBIAS` / `calcCCI` / `calcATR`) round their outputs to **3 decimals** by default, adjustable via the `decimals` option (e.g. `calcMA(closes, { periods: [5], decimals: 2 })`); `calcOBV` / `calcROC` / `calcDMI` / `calcSAR` / `calcKC` emit raw floats (no rounding).
+
 ## Methods
 
 | Function | Description |
@@ -58,7 +62,7 @@ import { calcMA } from 'stock-sdk/indicators'
 
 const closes = klines.map(k => k.close)
 const ma = calcMA(closes, { periods: [5, 10, 20], type: 'sma' })
-// ma[last] => { ma5: 1712.3, ma10: 1698.1, ma20: 1675.4 }
+// ma[last] => { ma5: 1712.303, ma10: 1698.126, ma20: 1675.418 }
 ```
 
 ## calcMACD
@@ -91,7 +95,7 @@ Stochastic oscillator. Needs OHLCV (uses high / low / close). Defaults: `period=
 import { calcKDJ } from 'stock-sdk/indicators'
 
 const kdj = calcKDJ(klines, { period: 9 })
-// kdj[last] => { k: 82.1, d: 75.6, j: 95.1 }
+// kdj[last] => { k: 82.137, d: 75.611, j: 95.189 }
 ```
 
 ## calcRSI
@@ -102,7 +106,7 @@ Relative Strength Index, multi-period. Result keys look like `rsi6`, `rsi12`, `r
 import { calcRSI } from 'stock-sdk/indicators'
 
 const rsi = calcRSI(closes, { periods: [6, 12, 24] })
-// rsi[last] => { rsi6: 71.2, rsi12: 64.8, rsi24: 58.3 }
+// rsi[last] => { rsi6: 71.235, rsi12: 64.802, rsi24: 58.341 }
 ```
 
 ## calcWR
@@ -146,7 +150,7 @@ Average True Range — true range `tr` and its average `atr`. Needs OHLCV; defau
 import { calcATR } from 'stock-sdk/indicators'
 
 const atr = calcATR(klines, { period: 14 })
-// atr[last] => { tr: 24.5, atr: 21.3 }
+// atr[last] => { tr: 24.5, atr: 21.307 }
 ```
 
 ## calcOBV

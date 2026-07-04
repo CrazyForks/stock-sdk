@@ -4,7 +4,7 @@
 > 单一事实源）与 `src/types` 自动生成，目的是让 AI 工具**一次性读取** stock-sdk 的全部
 > 命名空间方法、参数与返回数据结构。**请勿手改本文件**——改 spec / types 后重新生成。
 >
-> 版本：v2.2.1 · 文档站：https://stock-sdk.linkdiary.cn · npm: `npm i stock-sdk`
+> 版本：v2.2.2 · 文档站：https://stock-sdk.linkdiary.cn · npm: `npm i stock-sdk`
 
 ## 这是什么
 
@@ -44,7 +44,7 @@ import { screen, backtest } from 'stock-sdk/screener';
 
 ### 安装与模块格式
 
-- 最新版：`npm i stock-sdk`（当前 v2.2.1）
+- 最新版：`npm i stock-sdk`（当前 v2.2.2）
 - v1 旧版（已封存）：`npm i stock-sdk@legacy`
 - **ESM + CommonJS** 双格式；主包 `import { StockSDK } from 'stock-sdk'`
 - 纯计算 subpath：`stock-sdk/{indicators,signals,symbols,screener,cache,errors,mcp}`（tree-shake 友好，不拖入全部 provider）
@@ -192,7 +192,7 @@ Cursor / Claude Desktop 等配置 `mcpServers`：`{ "command": "npx", "args": ["
     - _(CLI 专属 options，SDK 请用上方的 SDK 字段；期货 `--adjust` 等 SDK 不生效)_
     - `--start → options.startDate` (string, CLI 专属): 起始日期 YYYYMMDD
     - `--end → options.endDate` (string, CLI 专属): 结束日期 YYYYMMDD
-- **`sdk.kline.withIndicators(symbol, options?)`** — 带技术指标的历史 K 线（A 股 / 港股 / 美股，market 不传自动按 symbol 识别）。周期默认 daily，复权默认按 SDK 默认（qfq）；日期支持 YYYYMMDD 或 YYYY-MM-DD。indicators 为对象，键取自 14 个指标：ma / macd / boll / kdj / rsi / wr / bias / cci / atr / obv / roc / dmi / sar / kc，每个键传 true 即用默认参数开启，或传配置对象（如 { ma: { periods: [5,10,20] }, macd: { short: 12, long: 26, signal: 9 } }）。SDK 会按指标依赖自动向前多取若干 bar 保证首日有效。
+- **`sdk.kline.withIndicators(symbol, options?)`** — 带技术指标的历史 K 线（A 股 / 港股 / 美股，market 不传自动按 symbol 识别）。周期默认 daily，复权默认按 SDK 默认（qfq）；日期支持 YYYYMMDD 或 YYYY-MM-DD。indicators 为对象，键取自 14 个指标：ma / macd / boll / kdj / rsi / wr / bias / cci / atr / obv / roc / dmi / sar / kc，每个键传 true 即用默认参数开启，或传配置对象（如 { ma: { periods: [5,10,20] }, macd: { short: 12, long: 26, signal: 9 } }）。SDK 会按指标依赖自动向前多取若干 bar 保证首日有效。舍入型指标(ma/macd/boll/kdj/rsi/wr/bias/cci/atr)可传 decimals 指定输出小数位(默认 3;obv/roc/dmi/sar/kc 输出不舍入)。
     - `symbol` (位置参数, 必填): 股票代码（A 股 / 港股 / 美股）
     - `options.period` (daily | weekly | monthly, 默认 daily, SDK / MCP): 历史 K 线周期
     - `options.adjust` (qfq | hfq | none, 默认 qfq, SDK / MCP): 复权：qfq=前复权(默认,看走势) / hfq=后复权(算收益) / ''=不复权
@@ -3372,6 +3372,8 @@ export interface MAOptions {
   periods?: number[];
   /** 均线类型：'sma'(简单) | 'ema'(指数) | 'wma'(加权)，默认 'sma' */
   type?: 'sma' | 'ema' | 'wma';
+  /** 输出舍入小数位，默认 3 */
+  decimals?: number;
 }
 
 export interface MACDOptions {
@@ -3381,6 +3383,8 @@ export interface MACDOptions {
   long?: number;
   /** 信号线 EMA 周期，默认 9 */
   signal?: number;
+  /** 输出舍入小数位，默认 3 */
+  decimals?: number;
 }
 
 export interface BOLLOptions {
@@ -3388,6 +3392,8 @@ export interface BOLLOptions {
   period?: number;
   /** 标准差倍数，默认 2 */
   stdDev?: number;
+  /** 输出舍入小数位，默认 3 */
+  decimals?: number;
 }
 
 export interface KDJOptions {
@@ -3397,31 +3403,43 @@ export interface KDJOptions {
   kPeriod?: number;
   /** D 值平滑周期，默认 3 */
   dPeriod?: number;
+  /** 输出舍入小数位，默认 3 */
+  decimals?: number;
 }
 
 export interface RSIOptions {
   /** RSI 周期数组，默认 [6, 12, 24] */
   periods?: number[];
+  /** 输出舍入小数位，默认 3 */
+  decimals?: number;
 }
 
 export interface WROptions {
   /** WR 周期数组，默认 [6, 10] */
   periods?: number[];
+  /** 输出舍入小数位，默认 3 */
+  decimals?: number;
 }
 
 export interface BIASOptions {
   /** BIAS 周期数组，默认 [6, 12, 24] */
   periods?: number[];
+  /** 输出舍入小数位，默认 3 */
+  decimals?: number;
 }
 
 export interface CCIOptions {
   /** CCI 周期，默认 14 */
   period?: number;
+  /** 输出舍入小数位，默认 3 */
+  decimals?: number;
 }
 
 export interface ATROptions {
   /** ATR 周期，默认 14 */
   period?: number;
+  /** 输出舍入小数位，默认 3 */
+  decimals?: number;
 }
 
 /**

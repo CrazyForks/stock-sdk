@@ -53,17 +53,17 @@ export const klineWithIndicatorsTool: ToolDef = {
         description:
           '指标配置对象，键取自 ' +
           INDICATOR_KEYS.join(' / ') +
-          '；值为 true（默认参数）或配置对象',
+          '；值为 true（默认参数）或配置对象。舍入型指标可传 decimals 指定输出小数位（默认 3）',
         properties: {
-          ma: { description: 'MA 均线，true 或配置对象 { periods: [5,10,20], type: sma|ema|wma }' },
-          macd: { description: 'MACD，true 或配置对象 { short, long, signal }' },
-          boll: { description: '布林带，true 或配置对象 { period, stdDev }' },
-          kdj: { description: 'KDJ，true 或配置对象 { period, kPeriod, dPeriod }' },
-          rsi: { description: 'RSI，true 或配置对象 { periods }' },
-          wr: { description: '威廉指标 WR，true 或配置对象 { periods }' },
-          bias: { description: 'BIAS 乖离率，true 或配置对象 { periods }' },
-          cci: { description: 'CCI，true 或配置对象 { period }' },
-          atr: { description: 'ATR 真实波幅，true 或配置对象 { period }' },
+          ma: { description: 'MA 均线，true 或配置对象 { periods: [5,10,20], type: sma|ema|wma, decimals }' },
+          macd: { description: 'MACD，true 或配置对象 { short, long, signal, decimals }' },
+          boll: { description: '布林带，true 或配置对象 { period, stdDev, decimals }' },
+          kdj: { description: 'KDJ，true 或配置对象 { period, kPeriod, dPeriod, decimals }' },
+          rsi: { description: 'RSI，true 或配置对象 { periods, decimals }' },
+          wr: { description: '威廉指标 WR，true 或配置对象 { periods, decimals }' },
+          bias: { description: 'BIAS 乖离率，true 或配置对象 { periods, decimals }' },
+          cci: { description: 'CCI，true 或配置对象 { period, decimals }' },
+          atr: { description: 'ATR 真实波幅，true 或配置对象 { period, decimals }' },
           obv: { description: 'OBV，true 或配置对象 { maPeriod }' },
           roc: { description: 'ROC，true 或配置对象 { period, signalPeriod }' },
           dmi: { description: 'DMI / ADX，true 或配置对象 { period, adxPeriod }' },

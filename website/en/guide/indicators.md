@@ -61,6 +61,10 @@ OBV depends on volume, while CCI / ATR / DMI / SAR / KDJ / WR depend on high, lo
 Volume-dependent indicators like `calcOBV` produce numbers that depend on the `volume` units in your K-lines. v2's target unit is "shares", but unit conversion is deferred for now, so at runtime `volume` may still be in each provider's raw unit (e.g. "lots" for A-shares). Keep this in mind when comparing across markets or migrating v1 backtest results.
 :::
 
+::: tip Output precision
+Rounding indicators (ma / macd / boll / kdj / rsi / wr / bias / cci / atr) emit 3 decimals by default, adjustable via each indicator's `decimals` option; obv / roc / dmi / sar / kc emit raw floats.
+:::
+
 ## addIndicators: batch enrichment
 
 `addIndicators` computes several indicators at once and attaches them back to each bar, producing `KlineWithIndicators<T>`. Use it when you want everything in one pass.

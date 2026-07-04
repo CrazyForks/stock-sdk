@@ -3,14 +3,15 @@ import { addIndicators, estimateIndicatorLookback, hasCumulativeIndicator, type 
 /**
  * 全量 refetch 后切片的 lookback 下限(根),仅对【递归型】指标组合生效。
  * estimateIndicatorLookback 的 requiredBars 是"窗口期能算出值"的下限,
- * 不足以让递归型指标(KDJ/RSI/ATR/DMI)的平滑状态收敛到 round(2) 之下;
- * 500 根下 Wilder-14 的状态差衰减至 ~2e-16,对 2 位小数输出即逐值一致。
+ * 不足以让递归型指标(KDJ/RSI/ATR/DMI)的平滑状态收敛到 round(3) 之下;
+ * 500 根下 Wilder-14 的状态差衰减至 ~2e-16,对 3 位小数输出即逐值一致。
  *
  * Review P2-7:500 只按默认周期标定 —— 非默认大周期(如 rsi periods:[100])
- * 的 Wilder-100 在 400 步后仅衰减到 ~1.8%,round(2) 可见。实际下限取
+ * 的 Wilder-100 在 400 步后仅衰减到 ~1.8%,round(3) 可见。实际下限取
  * max(500, 15 × maxRecursiveLookback):暖机内首个有效值前还要消耗 ~N 根种子,
  * 有效衰减步数 ≈ (15-1)N,Wilder-N 衰减 14N 步 ≈ e^-14 ≈ 1e-6 ——
- * 远低于 2 位舍入界,.xx5 刀尖位也不会翻转(10× 时实测仍有单 bar ±0.01)。
+ * 远低于 3 位舍入半步(5e-4,余量 ~500×),.xxx5 刀尖位也不会翻转
+ * (10× 时曾在 2 位输出下实测单 bar ±0.01,故取 15×)。
  *
  * Review R3-12:倍增基数从全局 maxLookback 收窄为 maxRecursiveLookback
  * (registry 按 recursive/emaBased 声明)—— 纯窗口型指标(SMA/BOLL/WR 等)

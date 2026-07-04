@@ -1,12 +1,6 @@
 import { OHLCV, WROptions, WRResult } from './types';
+import { round } from './round';
 
-/**
- * 统一精度处理
- */
-function round(value: number, decimals: number = 3): number {
-  const factor = Math.pow(10, decimals);
-  return Math.round(value * factor) / factor;
-}
 
 /**
  * 计算威廉指标 WR
@@ -15,7 +9,7 @@ export function calcWR(
   data: OHLCV[],
   options: WROptions = {}
 ): WRResult[] {
-  const { periods = [6, 10] } = options;
+  const { periods = [6, 10], decimals } = options;
 
   const wrArrays: { [key: string]: (number | null)[] } = {};
 
@@ -48,7 +42,7 @@ export function calcWR(
       }
 
       const wrValue = ((highN - close) / (highN - lowN)) * 100;
-      wr.push(round(wrValue));
+      wr.push(round(wrValue, decimals));
     }
 
     wrArrays[`wr${period}`] = wr;

@@ -6,6 +6,19 @@ pageClass: changelog-page
 
 This page records the release history of Stock SDK. v2.0.0 is an **architectural leap** — without adding data sources, it reworks the symbol model, data contract, API surface, request layer, and error system, and adds a CLI / MCP and subpath exports.
 
+## v2.2.2
+
+> Released: 2026-07-04
+
+### Added
+
+- **Indicator `decimals` option**: rounding indicators (ma / macd / boll / kdj / rsi / wr / bias / cci / atr) accept `decimals?: number` to control output precision (e.g. `calcMA(closes, { periods: [5], decimals: 2 })`), available through the SDK, `kline.withIndicators` and MCP.
+
+### Changed
+
+- **Default indicator precision goes from 2 to 3 decimals** (based on [#55](https://github.com/chengzuopeng/stock-sdk/pull/55), thanks [@Ahaochan](https://github.com/Ahaochan)): MA curves of low-priced instruments (e.g. a 3-CNY ETF) no longer look step-shaped. Note this is more than an extra digit: MACD / BOLL / BIAS consume internally rounded EMA/SMA intermediates, so some values differ from the old release at the **2nd** decimal even after re-rounding (roughly half of the MACD histogram values in measurement; golden/death crosses can shift by ±1 bar), and KC shifts with its internal EMA/ATR inputs; recalibrate backtests that snapshot indicator values. The 9 duplicated `round()` helpers are consolidated into one shared module.
+- obv / roc / dmi / sar / kc keep emitting raw floats (no rounding), matching previous behavior.
+
 ## v2.2.1
 
 > Released: 2026-07-03
@@ -25,7 +38,7 @@ This page records the release history of Stock SDK. v2.0.0 is an **architectural
 
 ## v2.2.0
 
-> Released: TBD
+> Released: 2026-06-27
 
 ### Added
 

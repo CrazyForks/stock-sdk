@@ -1,12 +1,6 @@
 import { OHLCV, KDJOptions, KDJResult } from './types';
+import { round } from './round';
 
-/**
- * 统一精度处理
- */
-function round(value: number, decimals: number = 3): number {
-  const factor = Math.pow(10, decimals);
-  return Math.round(value * factor) / factor;
-}
 
 /**
  * 计算 KDJ 指标
@@ -24,7 +18,7 @@ export function calcKDJ(
   data: OHLCV[],
   options: KDJOptions = {}
 ): KDJResult[] {
-  const { period = 9, kPeriod = 3, dPeriod = 3 } = options;
+  const { period = 9, kPeriod = 3, dPeriod = 3, decimals } = options;
 
   const result: KDJResult[] = [];
   let k = 50;
@@ -96,9 +90,9 @@ export function calcKDJ(
     const j = 3 * k - 2 * d;
 
     result.push({
-      k: round(k),
-      d: round(d),
-      j: round(j),
+      k: round(k, decimals),
+      d: round(d, decimals),
+      j: round(j, decimals),
     });
   }
 

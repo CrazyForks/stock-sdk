@@ -13,6 +13,8 @@ export interface MAOptions {
   periods?: number[];
   /** 均线类型：'sma'(简单) | 'ema'(指数) | 'wma'(加权)，默认 'sma' */
   type?: 'sma' | 'ema' | 'wma';
+  /** 输出舍入小数位，默认 3 */
+  decimals?: number;
 }
 
 export interface MACDOptions {
@@ -22,6 +24,8 @@ export interface MACDOptions {
   long?: number;
   /** 信号线 EMA 周期，默认 9 */
   signal?: number;
+  /** 输出舍入小数位，默认 3 */
+  decimals?: number;
 }
 
 export interface BOLLOptions {
@@ -29,6 +33,8 @@ export interface BOLLOptions {
   period?: number;
   /** 标准差倍数，默认 2 */
   stdDev?: number;
+  /** 输出舍入小数位，默认 3 */
+  decimals?: number;
 }
 
 export interface KDJOptions {
@@ -38,31 +44,43 @@ export interface KDJOptions {
   kPeriod?: number;
   /** D 值平滑周期，默认 3 */
   dPeriod?: number;
+  /** 输出舍入小数位，默认 3 */
+  decimals?: number;
 }
 
 export interface RSIOptions {
   /** RSI 周期数组，默认 [6, 12, 24] */
   periods?: number[];
+  /** 输出舍入小数位，默认 3 */
+  decimals?: number;
 }
 
 export interface WROptions {
   /** WR 周期数组，默认 [6, 10] */
   periods?: number[];
+  /** 输出舍入小数位，默认 3 */
+  decimals?: number;
 }
 
 export interface BIASOptions {
   /** BIAS 周期数组，默认 [6, 12, 24] */
   periods?: number[];
+  /** 输出舍入小数位，默认 3 */
+  decimals?: number;
 }
 
 export interface CCIOptions {
   /** CCI 周期，默认 14 */
   period?: number;
+  /** 输出舍入小数位，默认 3 */
+  decimals?: number;
 }
 
 export interface ATROptions {
   /** ATR 周期，默认 14 */
   period?: number;
+  /** 输出舍入小数位，默认 3 */
+  decimals?: number;
 }
 
 /**

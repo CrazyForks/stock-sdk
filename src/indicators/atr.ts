@@ -1,12 +1,6 @@
 import { OHLCV, ATROptions, ATRResult } from './types';
+import { round } from './round';
 
-/**
- * 统一精度处理
- */
-function round(value: number, decimals: number = 3): number {
-  const factor = Math.pow(10, decimals);
-  return Math.round(value * factor) / factor;
-}
 
 /**
  * 计算平均真实波幅 ATR (Average True Range)
@@ -28,7 +22,7 @@ export function calcATR(
   data: OHLCV[],
   options: ATROptions = {}
 ): ATRResult[] {
-  const { period = 14 } = options;
+  const { period = 14, decimals } = options;
 
   const result: ATRResult[] = [];
   const tr: (number | null)[] = [];
@@ -64,7 +58,7 @@ export function calcATR(
 
   for (let i = 0; i < data.length; i++) {
     if (i < period - 1) {
-      result.push({ tr: tr[i] !== null ? round(tr[i]!) : null, atr: null });
+      result.push({ tr: tr[i] !== null ? round(tr[i]!, decimals) : null, atr: null });
       continue;
     }
 
@@ -92,8 +86,8 @@ export function calcATR(
     }
 
     result.push({
-      tr: tr[i] !== null ? round(tr[i]!) : null,
-      atr: atr !== null ? round(atr) : null,
+      tr: tr[i] !== null ? round(tr[i]!, decimals) : null,
+      atr: atr !== null ? round(atr, decimals) : null,
     });
   }
 

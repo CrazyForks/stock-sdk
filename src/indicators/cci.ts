@@ -1,12 +1,6 @@
 import { OHLCV, CCIOptions, CCIResult } from './types';
+import { round } from './round';
 
-/**
- * 统一精度处理
- */
-function round(value: number, decimals: number = 3): number {
-  const factor = Math.pow(10, decimals);
-  return Math.round(value * factor) / factor;
-}
 
 /**
  * 计算商品通道指数 CCI
@@ -26,7 +20,7 @@ export function calcCCI(
   data: OHLCV[],
   options: CCIOptions = {}
 ): CCIResult[] {
-  const { period = 14 } = options;
+  const { period = 14, decimals } = options;
 
   const result: CCIResult[] = [];
 
@@ -82,7 +76,7 @@ export function calcCCI(
       result.push({ cci: 0 });
     } else {
       const cci = (tp[i]! - ma) / (0.015 * md);
-      result.push({ cci: round(cci) });
+      result.push({ cci: round(cci, decimals) });
     }
   }
 
