@@ -2,6 +2,8 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../../mocks/server';
 import StockSDK from '../../../../src/index';
+import { RequestClient } from '../../../../src/core';
+import { getIndividualStockChanges } from '../../../../src/providers/eastmoney';
 
 const ZT_BASE = 'https://push2ex.eastmoney.com';
 
@@ -380,10 +382,6 @@ describe('TopicData - getIndividualStockChanges(个股按日异动)', () => {
       )
     );
 
-    const { getIndividualStockChanges } = await import(
-      '../../../../src/providers/eastmoney'
-    );
-    const { RequestClient } = await import('../../../../src/core');
     const day = await getIndividualStockChanges(
       new RequestClient({ retry: { maxRetries: 0 } }),
       '600519',

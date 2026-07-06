@@ -17,7 +17,6 @@ import type { RequestClient } from '../core';
 import { asyncPool } from '../core/utils';
 import { addDays, todayInTz, MARKET_TZ } from '../core/time';
 import { InvalidArgumentError } from '../core/errors';
-import { normalizeSymbol } from '../symbols';
 import { BaseService } from './baseService';
 import type { QuoteService } from './quoteService';
 
@@ -119,13 +118,8 @@ export class MarketEventService extends BaseService {
     }
     // 资产类型在取日历前校验:窗口内恰无交易日时逐日请求不会发生,
     // provider 层的守卫触达不到 —— 前移保证非法符号恒定零请求即拒
-    const ns = normalizeSymbol(symbol, { market: 'CN' });
-    if (ns.assetType !== 'stock') {
-      throw new InvalidArgumentError(
-        `个股盘口异动仅支持 A 股个股,收到 assetType='${ns.assetType}'(symbol=${symbol})`,
-        { argument: 'symbol', value: symbol, assetType: ns.assetType }
-      );
-    }
+    // (守卫实现与文案在 provider 层单一来源)
+    const ns = eastmoney.assertCnStockSymbol(symbol);
 
     const to = todayInTz(MARKET_TZ.CN);
     const from = addDays(to, -(days - 1));
@@ -133,7 +127,7 @@ export class MarketEventService extends BaseService {
     const calendar = await this.quoteService.getTradingCalendar();
     const tradingDays = calendar.filter((d) => d >= from && d <= to);
 
-    const dayResults = await asyncPool(
+    const rawResults = await asyncPool(
       tradingDays.map(
         (date) => () =>
           eastmoney.getIndividualStockChanges(this.client, symbol, date)
@@ -141,10 +135,27 @@ export class MarketEventService extends BaseService {
       INDIVIDUAL_HISTORY_CONCURRENCY,
       true
     );
+    // 回显对账:provider 的 date 取服务端回显 —— 若服务端对日历内某请求日
+    // 回退到其它交易日(回显日 ≠ 请求日,如临时休市/该日数据缺失),携带的
+    // 是别的交易日的事件,原样收录会造成 days[] 日期重复、stats 双重计数。
+    // 按「服务端无请求日数据」处理,保持 days 与请求交易日一一对应、升序唯一
+    const dayResults = rawResults.map((result, i) =>
+      result.date === tradingDays[i]
+        ? result
+        : {
+            date: tradingDays[i],
+            available: false,
+            code: result.code,
+            name: '',
+            changes: [],
+          }
+    );
 
     const availableDays = dayResults.filter((d) => d.available);
-    // 键用原始类型码(稳定、可程序化比较),中文标签内联在值里供展示
-    const stats: Record<string, ChangeTypeCount> = {};
+    // 键用原始类型码(稳定、可程序化比较),中文标签内联在值里供展示。
+    // Object.create(null):键来自服务端(typeCode),空原型免疫
+    // 'constructor' 等原型链键对 ??= 的干扰
+    const stats: Record<string, ChangeTypeCount> = Object.create(null);
     for (const day of availableDays) {
       for (const change of day.changes) {
         const key = change.typeCode || 'unknown';

@@ -104,6 +104,50 @@ describe('marketEvent.individualChangesHistory', () => {
     });
   });
 
+  it('回显对账:服务端对某请求日回退到其它交易日 → 该日标 available=false,无重复日期、stats 不双计', async () => {
+    const [d3, d2, d1, d0] = recentDays();
+    server.use(
+      http.get(CALENDAR_URL, () => HttpResponse.text([d2, d1, d0].join(','))),
+      http.get(`${ZT_BASE}/getStockChanges`, ({ request }) => {
+        const date = new URL(request.url).searchParams.get('date');
+        if (date === compact(d1)) {
+          // 服务端对请求日 d1 回退到 d2 并回显 d=d2(携带 d2 的事件)
+          return HttpResponse.json({
+            data: {
+              d: Number(compact(d2)),
+              c: '603087',
+              m: 1,
+              n: '甘李药业',
+              data: [{ tm: 145605, t: 4, p: 67090, i: '', u: '10.00', v: 1 }],
+            },
+          });
+        }
+        // d2 与 d0 正常回显自身日期(date 参数即 YYYYMMDD),各 1 条封涨停事件
+        return HttpResponse.json({
+          data: {
+            d: Number(date),
+            c: '603087',
+            m: 1,
+            n: '甘李药业',
+            data: [{ tm: 93000, t: 4, p: 67090, i: '', u: '10.00', v: 1 }],
+          },
+        });
+      })
+    );
+
+    const res = await sdk.marketEvent.individualChangesHistory('603087', {
+      days: 3,
+    });
+    // 日期与请求交易日一一对应,升序且唯一
+    expect(res.days.map((d) => d.date)).toEqual([d2, d1, d0]);
+    // 回退日被对账为 available=false,不携带别日事件
+    expect(res.days[1].available).toBe(false);
+    expect(res.days[1].changes).toEqual([]);
+    // stats 只计 d2 与 d0 的各 1 条,不被 d1 的回退响应双计
+    expect(res.stats).toEqual({ '4': { count: 2, label: '封涨停板' } });
+    void d3;
+  });
+
   it('全部超窗:availableFrom 为 null,stats 为空,code 回退符号归一结果', async () => {
     const [d3, d2] = recentDays();
     server.use(

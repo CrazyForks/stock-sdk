@@ -6,6 +6,26 @@ pageClass: changelog-page
 
 This page records the release history of Stock SDK. v2.0.0 is an **architectural leap** — without adding data sources, it reworks the symbol model, data contract, API surface, request layer, and error system, and adds a CLI / MCP and subpath exports.
 
+## v2.3.0
+
+> Released: 2026-07-06
+
+### Added
+
+- **Chip distribution `sdk.chips.cn / hk / us`** ([#57](https://github.com/chengzuopeng/stock-sdk/issues/57), thanks [@hawx1993](https://github.com/hawx1993) for the request): computed **locally** from daily K-lines + turnover rate (a TypeScript port of Eastmoney's front-end CYQ algorithm, no new data source) — per-day profit ratio, average cost, 90 / 70 cost ranges with concentration, and an optional 150-bucket **chip-peak histogram** via `includeHistogram`. Unit tests assert per-day, per-field golden parity against the original Eastmoney JS.
+  - Pure function `calcChipDistribution(klines, options)` is exported from `stock-sdk/indicators` for user-supplied K-lines; the `tail` option avoids O(N²) work in full-accumulation mode
+  - Conventions: `range` defaults to `120` (matches the Eastmoney app); `{ range: 0, adjust: '' }` reproduces akshare's `stock_cyq_em` output — see the [chips docs](/en/api/chips)
+  - CLI `stock-sdk chips cn 600519` and MCP tools `get_chip_distribution` (core toolset) / `get_hk_chip_distribution` / `get_us_chip_distribution` derive automatically
+- **Per-stock intraday changes `marketEvent.individualChanges` / `individualChangesHistory`** ([#54](https://github.com/chengzuopeng/stock-sdk/issues/54), thanks [@hawx1993](https://github.com/hawx1993) for the request): a single A-share stock's all-type change-event stream for one trading day (time / type / trigger price / change%), plus an N-day (1~60, default 7) aggregation over the trading calendar — per-day `available` flags, `coverage` of the actually-retrievable range, and `stats` keyed by raw type code (with Chinese labels inline).
+  - Data source is Eastmoney's per-stock push2ex endpoint (not covered by akshare); the server only retains roughly the last few weeks **with occasional per-date gaps** — always branch on the per-day `available`
+  - For a full 30-day view, combine with daily proxies — see the new guide [30-Day Per-Stock Changes Panorama](/en/guide/stock-changes-panorama)
+  - MCP tools `get_individual_stock_changes` / `get_individual_stock_changes_history` and the CLI commands derive automatically
+- **`marketEvent.stockChanges` multi-type & all**: `type` widens to `StockChangeType | StockChangeType[] | 'all'`; `'all'` fetches all 22 types in one call and auto-paginates by the server-reported total (can exceed 10k rows on a trading day).
+
+### Changed
+
+- **`StockChangeItem` field extension**: adds `typeCode` (raw server type code); `changeType` widens from `StockChangeType` to `StockChangeType | 'unknown'` (new server-side codes no longer lose data). Consumers doing exhaustive switches over `changeType` need an `'unknown'` branch.
+
 ## v2.2.2
 
 > Released: 2026-07-04

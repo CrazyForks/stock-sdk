@@ -6,6 +6,26 @@ pageClass: changelog-page
 
 本页记录 Stock SDK 的版本更新历史。v2.0.0 是一次**架构跃迁**——在不扩展数据源的前提下，重做了符号模型、数据契约、API 表面、请求层与错误体系，并新增 CLI / MCP 与 subpath 导出。
 
+## v2.3.0
+
+> 发布时间：2026-07-06
+
+### 新增
+
+- **筹码分布 `sdk.chips.cn / hk / us`**（[#57](https://github.com/chengzuopeng/stock-sdk/issues/57)，感谢 [@hawx1993](https://github.com/hawx1993) 的需求反馈）：基于日 K 线 + 换手率**本地计算**（东方财富前端 CYQ 算法的 TypeScript 移植，零新增数据源），输出每日获利比例、平均成本、90 / 70 成本区间与集中度，`includeHistogram` 可附带 150 价格档的**筹码峰直方图**。单测与东财原版 JS 逐日逐字段黄金对拍。
+  - 纯函数 `calcChipDistribution(klines, options)` 从 `stock-sdk/indicators` 导出，可喂自备 K 线；`tail` 选项避免全量累计口径下的 O(N²) 计算
+  - 口径说明：`range` 默认 `120`（东财 App 显示口径），`{ range: 0, adjust: '' }` 可复现 akshare `stock_cyq_em` 输出；详见 [chips 文档](/api/chips)
+  - CLI `stock-sdk chips cn 600519` 与 MCP 工具 `get_chip_distribution`（core 工具集）/ `get_hk_chip_distribution` / `get_us_chip_distribution` 同步派生
+- **个股盘口异动 `marketEvent.individualChanges` / `individualChangesHistory`**（[#54](https://github.com/chengzuopeng/stock-sdk/issues/54)，感谢 [@hawx1993](https://github.com/hawx1993) 的需求反馈）：单只 A 股某交易日的全类型异动事件流（时间 / 类型 / 触发价 / 涨跌幅），以及近 N 天（1~60，默认 7）按交易日历聚合的异动历史——逐日 `available` 标注、`coverage` 覆盖范围、`stats` 按类型码计数（含中文标签）。
+  - 数据源为东财 push2ex 个股接口（akshare 未收录）；服务端仅保留约最近数周且**存在个别日期空洞**，请以逐日 `available` 为准
+  - 30 天完整视角的组合方案见新指南[「个股 30 天异动全景」](/guide/stock-changes-panorama)
+  - MCP 工具 `get_individual_stock_changes` / `get_individual_stock_changes_history` 与 CLI 命令同步派生
+- **`marketEvent.stockChanges` 支持多类型与全量**：`type` 参数放宽为 `StockChangeType | StockChangeType[] | 'all'`，`'all'` 一次拉取全部 22 类并按服务端总数自动翻页收全（交易日全类型总量可达上万条）。
+
+### 行为变更
+
+- **`StockChangeItem` 字段扩展**：新增 `typeCode`（服务端原始类型码）；`changeType` 类型由 `StockChangeType` 拓宽为 `StockChangeType | 'unknown'`（服务端新增未知类型码时不再丢数据）。对 `changeType` 做穷举 switch 的消费端需补 `'unknown'` 分支。
+
 ## v2.2.2
 
 > 发布时间：2026-07-04

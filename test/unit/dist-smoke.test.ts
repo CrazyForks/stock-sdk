@@ -48,7 +48,7 @@ if (distStale) {
 }
 
 const NAMESPACES = [
-  'quotes', 'codes', 'batch', 'kline', 'board', 'options', 'futures',
+  'quotes', 'codes', 'batch', 'kline', 'chips', 'board', 'options', 'futures',
   'fundFlow', 'northbound', 'marketEvent', 'dragonTiger', 'blockTrade',
   'margin', 'fund', 'calendar', 'reference',
 ] as const;

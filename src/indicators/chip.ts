@@ -66,7 +66,8 @@ export interface ChipDistributionOptions {
    * 仅对输入序列**最后 `tail` 根**产出统计行(输出长度 = min(tail, 输入长度))。
    * 前面的 bar 仍参与分布推演,只是不生成输出行 —— 用于「取足暖机数据、
    * 只要尾部结果」的场景,避免 `range: 0` + 长序列时的 O(N²) 全量计算。
-   * 不传时对每根输入 bar 都产出统计行;`tail <= 0` 输出空数组,非整数向下取整。
+   * 不传时对每根输入 bar 都产出统计行;`tail <= 0` 或 `NaN` 输出空数组,
+   * 非整数向下取整,`Infinity` 等价于不传(输出全部行)。
    */
   tail?: number;
   /**

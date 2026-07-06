@@ -11,7 +11,11 @@ import {
   todayInTz,
   MARKET_TZ,
 } from '../../core';
-import { normalizeSymbol, toEastmoneySecid } from '../../symbols';
+import {
+  normalizeSymbol,
+  toEastmoneySecid,
+  type NormalizedSymbol,
+} from '../../symbols';
 import { toIsoDate } from './utils';
 import type {
   ZTPoolType,
@@ -377,22 +381,33 @@ export async function getStockChanges(
  * @param symbol - 股票代码(如 '600519' / 'sh600519',经 symbols 层归一)
  * @param date - 交易日 YYYYMMDD 或 YYYY-MM-DD;不传为北京时间今天
  */
-export async function getIndividualStockChanges(
-  client: RequestClient,
-  symbol: string,
-  date?: string
-): Promise<IndividualChangesDay> {
+/**
+ * 校验并归一 A 股【个股】符号(盘口异动个股接口仅个股有语义)。
+ *
+ * 板块(secid 前缀 90)/指数等传给该接口会被服务端静默回 data:null,
+ * 与"超保留窗口"不可区分 —— 零请求即拒更诚实。provider 与 service 层
+ * (individualChangesHistory 取日历前)共用本守卫,文案单一来源。
+ *
+ * 已知边界:交易所同码歧义(如 sh000001 上证指数 vs 平安银行)在 symbols
+ * 层归类为 stock,守卫放行、由服务端回空 —— 只拦"确定非个股"的输入。
+ */
+export function assertCnStockSymbol(symbol: string): NormalizedSymbol {
   const ns = normalizeSymbol(symbol, { market: 'CN' });
-  // 盘口异动仅个股有语义:板块(secid 前缀 90)/指数等传给该接口会被服务端
-  // 静默回 data:null,与"超保留窗口"不可区分 —— 零请求即拒更诚实。
-  // 已知边界:交易所同码歧义(如 sh000001 上证指数 vs 平安银行)在 symbols
-  // 层归类为 stock,守卫放行、由服务端回空 —— 只拦"确定非个股"的输入
   if (ns.assetType !== 'stock') {
     throw new InvalidArgumentError(
       `个股盘口异动仅支持 A 股个股,收到 assetType='${ns.assetType}'(symbol=${symbol})`,
       { argument: 'symbol', value: symbol, assetType: ns.assetType }
     );
   }
+  return ns;
+}
+
+export async function getIndividualStockChanges(
+  client: RequestClient,
+  symbol: string,
+  date?: string
+): Promise<IndividualChangesDay> {
+  const ns = assertCnStockSymbol(symbol);
   // secid 形如 '1.603087' / '0.000001' → 接口要求拆分的 market= 与 code= 参数
   const [market, code] = toEastmoneySecid(ns).split('.');
   const queryDate = normalizeDate(date) ?? getBeijingDateString();
