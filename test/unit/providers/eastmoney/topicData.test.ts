@@ -173,6 +173,224 @@ describe('TopicData - getStockChanges', () => {
     await expect(sdk.marketEvent.stockChanges('foo' as never)).rejects.toThrow(
       /Invalid StockChangeType/
     );
+    await expect(sdk.marketEvent.stockChanges([] as never)).rejects.toThrow(
+      /不能为空/
+    );
+  });
+
+  it('多类型数组:type 参数逗号拼接,changeType 按响应 t 码区分,未知码容错', async () => {
+    server.use(
+      http.get(`${ZT_BASE}/getAllStockChanges`, ({ request }) => {
+        // 防回归:必须是【裸逗号】—— 服务端不解码 %2C,编码后多类型会
+        // 静默退化为只识别第一个类型码(集成测试实测发现)
+        expect(request.url).toContain('type=8201,4');
+        expect(request.url).not.toContain('%2C');
+        const url = new URL(request.url);
+        // rocket_launch=8201, limit_up_seal=4
+        expect(url.searchParams.get('type')).toBe('8201,4');
+        return HttpResponse.json({
+          data: {
+            tc: 3,
+            allstock: [
+              { tm: 93055, c: '600519', n: '贵州茅台', t: 4, i: 'a' },
+              { tm: 93100, c: '000001', n: '平安银行', t: 8201, i: 'b' },
+              { tm: 93200, c: '300001', n: '特锐德', t: 8219, i: 'c' },
+            ],
+          },
+        });
+      })
+    );
+
+    const result = await sdk.marketEvent.stockChanges([
+      'rocket_launch',
+      'limit_up_seal',
+    ]);
+    expect(result).toHaveLength(3);
+    expect(result[0].changeType).toBe('limit_up_seal');
+    expect(result[0].typeCode).toBe('4');
+    expect(result[1].changeType).toBe('rocket_launch');
+    expect(result[1].changeTypeLabel).toBe('火箭发射');
+    // 22 类之外的码:changeType 'unknown',原始码保留在 typeCode
+    expect(result[2].changeType).toBe('unknown');
+    expect(result[2].typeCode).toBe('8219');
+    expect(result[2].changeTypeLabel).toBe('');
+  });
+
+  it("'all':请求全部 22 类且按 tc 自动翻页收全", async () => {
+    const pageIndexes: string[] = [];
+    const makeItems = (count: number, offset: number) =>
+      Array.from({ length: count }, (_, i) => ({
+        tm: 93000,
+        c: String(600000 + offset + i),
+        n: `股票${offset + i}`,
+        t: 8193,
+        i: '',
+      }));
+    server.use(
+      http.get(`${ZT_BASE}/getAllStockChanges`, ({ request }) => {
+        const url = new URL(request.url);
+        const typeParam = url.searchParams.get('type') ?? '';
+        expect(typeParam.split(',')).toHaveLength(22);
+        const page = url.searchParams.get('pageindex') ?? '0';
+        pageIndexes.push(page);
+        return HttpResponse.json({
+          data: {
+            tc: 5001,
+            allstock: page === '0' ? makeItems(5000, 0) : makeItems(1, 5000),
+          },
+        });
+      })
+    );
+
+    const result = await sdk.marketEvent.stockChanges('all');
+    expect(result).toHaveLength(5001);
+    expect(pageIndexes).toEqual(['0', '1']);
+  });
+});
+
+describe('TopicData - getIndividualStockChanges(个股按日异动)', () => {
+  const sdk = new StockSDK();
+
+  it('解析实测真实响应样本(603087 甘李药业):code/market/date 参数与全字段', async () => {
+    server.use(
+      http.get(`${ZT_BASE}/getStockChanges`, ({ request }) => {
+        const url = new URL(request.url);
+        expect(url.searchParams.get('code')).toBe('603087');
+        expect(url.searchParams.get('market')).toBe('1'); // 6xx → 沪市
+        expect(url.searchParams.get('date')).toBe('20260706');
+        // 2026-07-06 实测真实响应(节选)
+        return HttpResponse.json({
+          rc: 0,
+          rt: 101,
+          data: {
+            d: 20260706,
+            c: '603087',
+            m: 1,
+            n: '甘李药业',
+            data: [
+              { tm: 145650, t: 16, p: 67080, i: '67.080000,0.099852', u: '9.99', v: 53 },
+              {
+                tm: 145605,
+                t: 4,
+                p: 67090,
+                i: '67.090000,1260,67.09000,0.100016',
+                u: '10.00',
+                v: 178,
+              },
+              { tm: 111951, t: 8219, p: 61730, i: '61.73000,0.078253', u: '7.83', v: 22 },
+            ],
+          },
+        });
+      })
+    );
+
+    const result = await sdk.marketEvent.individualChanges('603087', {
+      date: '20260706',
+    });
+    expect(result).toHaveLength(3);
+    expect(result[0].time).toBe('14:56:50');
+    expect(result[0].typeCode).toBe('16');
+    expect(result[0].changeType).toBe('limit_up_open');
+    expect(result[0].changeTypeLabel).toBe('打开涨停板');
+    expect(result[0].price).toBe(67.08);
+    expect(result[0].changePercent).toBe(9.99);
+    expect(result[0].v).toBe(53);
+    expect(result[1].changeType).toBe('limit_up_seal');
+    expect(result[1].price).toBe(67.09);
+    // 个股接口会返回 22 类之外的码 → unknown + 原始码保留
+    expect(result[2].changeType).toBe('unknown');
+    expect(result[2].typeCode).toBe('8219');
+  });
+
+  it('symbol 经 symbols 层归一(sz 前缀→market=0),YYYY-MM-DD 日期归一', async () => {
+    server.use(
+      http.get(`${ZT_BASE}/getStockChanges`, ({ request }) => {
+        const url = new URL(request.url);
+        expect(url.searchParams.get('code')).toBe('000001');
+        expect(url.searchParams.get('market')).toBe('0'); // 深市
+        expect(url.searchParams.get('date')).toBe('20260703');
+        return HttpResponse.json({
+          data: { d: 20260703, c: '000001', m: 0, n: '平安银行', data: [] },
+        });
+      })
+    );
+
+    const result = await sdk.marketEvent.individualChanges('sz000001', {
+      date: '2026-07-03',
+    });
+    expect(result).toEqual([]);
+  });
+
+  it('不传 date 时默认北京时间今天(YYYYMMDD)', async () => {
+    let capturedDate: string | null = null;
+    server.use(
+      http.get(`${ZT_BASE}/getStockChanges`, ({ request }) => {
+        capturedDate = new URL(request.url).searchParams.get('date');
+        return HttpResponse.json({
+          data: { c: '600519', m: 1, n: '贵州茅台', data: [] },
+        });
+      })
+    );
+
+    await sdk.marketEvent.individualChanges('600519');
+    expect(capturedDate).toMatch(/^\d{8}$/);
+  });
+
+  it('data:null(超出服务端保留窗口)返回空数组', async () => {
+    server.use(
+      http.get(`${ZT_BASE}/getStockChanges`, () =>
+        HttpResponse.json({ rc: 0, rt: 101, data: null })
+      )
+    );
+
+    const result = await sdk.marketEvent.individualChanges('600519', {
+      date: '20260605',
+    });
+    expect(result).toEqual([]);
+  });
+
+  it('非个股符号(板块/指数)零请求即拒,不静默返回空', async () => {
+    // 未挂 handler:若守卫失效发出请求,MSW onUnhandledRequest:'error' 会让用例失败
+    // 板块显式 secid 形态归类为 board → 命中 assetType 守卫
+    await expect(
+      sdk.marketEvent.individualChanges('90.BK0475')
+    ).rejects.toThrow(/仅支持 A 股个股/);
+    // 特殊指数(注册表明确标记 index)→ 同样拒绝。
+    // 注:sh000001 这类交易所同码歧义(上证指数 vs 平安银行)在 symbols 层
+    // 归类为 stock,守卫放行、由服务端返回空 —— 守卫只拦"确定非个股"的输入
+    await expect(sdk.marketEvent.individualChanges('930955')).rejects.toThrow(
+      /仅支持 A 股个股/
+    );
+    await expect(
+      sdk.marketEvent.individualChangesHistory('930955')
+    ).rejects.toThrow(/仅支持 A 股个股/);
+    // 裸乱码由 symbols 层拒绝(另一条报错路径,同样零请求)
+    await expect(sdk.marketEvent.individualChanges('BK0475')).rejects.toThrow(
+      /Invalid symbol/
+    );
+  });
+
+  it('date 优先取服务端回显 data.d:非交易日请求被归一时不误标日期', async () => {
+    server.use(
+      http.get(`${ZT_BASE}/getStockChanges`, () =>
+        HttpResponse.json({
+          // 请求周日 20260705,服务端回退到周五并回显 d=20260703
+          data: { d: 20260703, c: '600519', m: 1, n: '贵州茅台', data: [] },
+        })
+      )
+    );
+
+    const { getIndividualStockChanges } = await import(
+      '../../../../src/providers/eastmoney'
+    );
+    const { RequestClient } = await import('../../../../src/core');
+    const day = await getIndividualStockChanges(
+      new RequestClient({ retry: { maxRetries: 0 } }),
+      '600519',
+      '20260705'
+    );
+    expect(day.date).toBe('2026-07-03');
+    expect(day.available).toBe(true);
   });
 });
 

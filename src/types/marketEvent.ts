@@ -90,12 +90,98 @@ export interface StockChangeItem {
   code: string;
   /** 股票名称 */
   name: string;
-  /** 异动类型 */
-  changeType: StockChangeType;
-  /** 异动类型对应的中文标签 */
+  /** 异动类型(由响应 t 码反查;服务端新增的未知码为 'unknown',原始码见 typeCode) */
+  changeType: StockChangeType | 'unknown';
+  /** 原始类型码(服务端 t 字段) */
+  typeCode: string;
+  /** 异动类型对应的中文标签(未知码为空串) */
   changeTypeLabel: string;
   /** 相关信息（来自原始接口） */
   info: string;
+}
+
+/**
+ * 个股盘口异动事件(个股按日接口,字段比全市场接口更丰富)
+ */
+export interface IndividualStockChangeItem {
+  /** 发生时间 HH:MM:SS */
+  time: string;
+  /** 原始类型码(个股接口会返回 22 类之外的码,如 8219) */
+  typeCode: string;
+  /** 异动类型(未知码为 'unknown') */
+  changeType: StockChangeType | 'unknown';
+  /** 中文标签(未知码为空串) */
+  changeTypeLabel: string;
+  /** 触发价(元) */
+  price: number | null;
+  /** 触发时涨跌幅(%) */
+  changePercent: number | null;
+  /** 相关信息（来自原始接口,CSV 格式因类型而异） */
+  info: string;
+  /** 上游未文档化字段(疑似异动量级),原样透传 */
+  v: number | null;
+}
+
+/**
+ * 个股单个交易日的异动数据
+ */
+export interface IndividualChangesDay {
+  /** 交易日 YYYY-MM-DD */
+  date: string;
+  /**
+   * 服务端该交易日是否有数据。false = 无数据(changes 恒为空),与
+   * "当日无异动"(true + 空数组)区分。
+   *
+   * 注意:服务端仅保留约最近数周(实测 1 个月左右),且窗口**不保证连续**
+   * ——实测存在个别日期空洞(更早的日期反而有数据)。永远以逐日返回的
+   * available 为准,不要按固定天数推断。
+   */
+  available: boolean;
+  /** 股票代码 */
+  code: string;
+  /** 股票名称(超窗时为空串) */
+  name: string;
+  /** 异动事件流(服务端顺序,最新在前) */
+  changes: IndividualStockChangeItem[];
+}
+
+/**
+ * 单个异动类型的计数(IndividualChangesHistory.stats 的值)
+ */
+export interface ChangeTypeCount {
+  /** 出现次数 */
+  count: number;
+  /** 中文标签(未知类型码为空串) */
+  label: string;
+}
+
+/**
+ * 个股近 N 天异动历史(逐交易日聚合)
+ */
+export interface IndividualChangesHistory {
+  /** 股票代码 */
+  code: string;
+  /** 股票名称 */
+  name: string;
+  /** 请求的自然日跨度 */
+  requestedDays: number;
+  /** 实际覆盖情况 */
+  coverage: {
+    /** 请求窗口起点(自然日)YYYY-MM-DD */
+    from: string;
+    /** 请求窗口终点(北京时间今天)YYYY-MM-DD */
+    to: string;
+    /** 窗口内首个有数据的交易日(其后仍可能有个别空洞日);全部无数据时为 null */
+    availableFrom: string | null;
+  };
+  /** 逐交易日数据(按日期升序;available=false 表示服务端该日无数据) */
+  days: IndividualChangesDay[];
+  /**
+   * 异动类型计数概览(仅统计 available 日)。
+   * key 为**原始类型码**(typeCode,稳定、可跨会话程序化比较),
+   * 中文标签见值内 label(未知码为空串)。
+   */
+  stats: Record<string, ChangeTypeCount>;
 }
 
 /**

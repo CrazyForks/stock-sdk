@@ -275,7 +275,7 @@ Coverage varies by market — this table helps you quickly check whether the SDK
 | `sdk.futures` | `.kline` / `.globalSpot` / `.globalKline` / `.inventory` / `.comexInventory` … |
 | `sdk.fundFlow` | `.individual` / `.market` / `.rank` / `.sectorRank` / `.sectorHistory` |
 | `sdk.northbound` | `.minute` / `.summary` / `.holdingRank` / `.history` / `.individual` |
-| `sdk.marketEvent` | `.ztPool` / `.stockChanges` / `.boardChanges` |
+| `sdk.marketEvent` | `.ztPool` / `.stockChanges` (multi-type / `'all'`) / `.boardChanges` / `.individualChanges` / `.individualChangesHistory` (per-stock changes) |
 | `sdk.dragonTiger` | `.detail` / `.stockStats` / `.institution` / `.branchRank` / `.seatDetail` |
 | `sdk.blockTrade` / `sdk.margin` | block trades / margin trading |
 | `sdk.fund` | `.dividendList` / `.navHistory` / `.estimate` / `.rankHistory` / `.profile` / `.theme.*` |

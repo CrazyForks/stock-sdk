@@ -7,7 +7,9 @@
 | Method | Description |
 |---|---|
 | `marketEvent.ztPool(type?, date?)` | Limit-up themed stock pools (6 pools) |
-| `marketEvent.stockChanges(type?)` | Per-stock intraday changes (22 change types) |
+| `marketEvent.stockChanges(type?)` | Market-wide intraday changes (22 types; array multi-type / `'all'` supported) |
+| `marketEvent.individualChanges(symbol, opts?)` | Single stock's change-event stream for one trading day (all types) |
+| `marketEvent.individualChangesHistory(symbol, opts?)` | Single stock's changes over the last N days (per-day aggregation + coverage + stats) |
 | `marketEvent.boardChanges()` | Sector-change details for the day |
 
 > Exact parameters and return fields follow the final implementation; the field tables below reflect the current data contract.
@@ -86,7 +88,7 @@ interface ZTPoolItem {
 
 ## marketEvent.stockChanges
 
-Per-stock intraday changes — 22 change types in total.
+Market-wide intraday changes — 22 types in total. `type` accepts a single type, an array (multiple types in one request), or `'all'` (all 22 types; auto-paginates when the total exceeds the 5000-per-page server limit).
 
 ```ts
 // Monitor large buys
@@ -95,16 +97,18 @@ largeBuys.slice(0, 10).forEach(c => {
   console.log(`${c.time} ${c.name}(${c.code}) ${c.changeTypeLabel} ${c.info}`);
 });
 
-// Monitor limit-up seals
-const sealUp = await sdk.marketEvent.stockChanges('limit_up_seal');
-console.log(`currently sealed at limit up: ${sealUp.length}`);
+// Multiple types in one request — each row's actual type comes from the response `t` code
+const seals = await sdk.marketEvent.stockChanges(['limit_up_seal', 'limit_down_seal']);
+
+// All 22 types (can exceed 10k rows on a trading day; auto-paginated)
+const all = await sdk.marketEvent.stockChanges('all');
 ```
 
 ### Parameters
 
 | Param | Type | Description |
 |---|---|---|
-| `type` | `StockChangeType` | Change type, defaults to `'large_buy'` (see below) |
+| `type` | `StockChangeType \| StockChangeType[] \| 'all'` | Change type, defaults to `'large_buy'`; array for multi-type, `'all'` for everything |
 
 #### Change type `StockChangeType`
 
@@ -128,14 +132,111 @@ console.log(`currently sealed at limit up: ${sealUp.length}`);
 
 ```ts
 interface StockChangeItem {
-  time: string;                  // event time HH:MM:SS
+  time: string;                             // event time HH:MM:SS
   code: string;
   name: string;
-  changeType: StockChangeType;   // change type
-  changeTypeLabel: string;       // change-type label
-  info: string;                  // extra info (from the upstream API)
+  changeType: StockChangeType | 'unknown';  // 'unknown' for new server-side codes
+  typeCode: string;                         // raw type code (server `t` field)
+  changeTypeLabel: string;                  // Chinese label ('' for unknown codes)
+  info: string;                             // extra info (from the upstream API)
 }
 ```
+
+---
+
+## marketEvent.individualChanges
+
+Change-event stream of a **single A-share stock** for one trading day (all types in one call, newest first; server-side codes beyond the 22 known types degrade to `'unknown'` with the raw code preserved).
+
+```ts
+// Today's events
+const events = await sdk.marketEvent.individualChanges('603087');
+
+// A specific date
+const friday = await sdk.marketEvent.individualChanges('603087', { date: '20260703' });
+```
+
+::: warning Server retention window
+The per-stock endpoint only retains **roughly the last few weeks** of data (about a month in practice, and **not guaranteed to be contiguous** — occasional per-date gaps exist): dates with no data and "no changes that day" both return an empty array. Use `individualChangesHistory` (per-day `available` flags) to tell them apart, and always branch on the returned `available` instead of assuming a fixed window.
+:::
+
+### Parameters
+
+| Param | Type | Description |
+|---|---|---|
+| `symbol` | `string` | Stock code, e.g. `'600519'` / `'sh600519'` |
+| `options.date` | `string` | Trading day `YYYYMMDD` or `YYYY-MM-DD`, defaults to today |
+
+### Returns
+
+`IndividualStockChangeItem[]`:
+
+```ts
+interface IndividualStockChangeItem {
+  time: string;                             // HH:MM:SS
+  typeCode: string;                         // raw type code (may exceed the 22 types, e.g. 8219)
+  changeType: StockChangeType | 'unknown';
+  changeTypeLabel: string;                  // Chinese label ('' for unknown codes)
+  price: number | null;                     // trigger price
+  changePercent: number | null;             // change% at trigger time
+  info: string;                             // raw info CSV (format varies by type)
+  v: number | null;                         // undocumented upstream field, passed through as-is
+}
+```
+
+---
+
+## marketEvent.individualChangesHistory
+
+Aggregates a single A-share stock's intraday changes over the **last N calendar days**: trading days inside the window are enumerated via the A-share trading calendar and fetched concurrently, then merged. This covers the "changes over the past 7 / 15 / 30 days" scenario.
+
+```ts
+const his = await sdk.marketEvent.individualChangesHistory('603087', { days: 15 });
+
+console.log(his.coverage);
+// { from: '2026-06-22', to: '2026-07-06', availableFrom: '2026-06-23' }
+console.log(his.stats);
+// keyed by raw type code (stable); Chinese label inline:
+// { '4': { count: 12, label: '封涨停板' }, '16': { count: 9, label: '打开涨停板' }, ... }
+```
+
+### Parameters
+
+| Param | Type | Description |
+|---|---|---|
+| `symbol` | `string` | Stock code |
+| `options.days` | `number` | Last N calendar days, `1~60`, defaults to `7` |
+
+::: tip Failure semantics
+If any trading day's request still fails after the built-in retries, the whole call throws — **no partial results** (fail-fast). Per-day `available: false` strictly means "the server has no data for that day"; it is never used to mask a failed request.
+:::
+
+### Returns
+
+`IndividualChangesHistory`:
+
+```ts
+interface IndividualChangesHistory {
+  code: string;
+  name: string;
+  requestedDays: number;
+  coverage: {
+    from: string;                         // window start YYYY-MM-DD
+    to: string;                           // window end (today, Beijing time)
+    availableFrom: string | null;         // first trading day with data (gaps may follow); null if none
+  };
+  days: Array<{                           // ascending by date
+    date: string;
+    available: boolean;                   // false = server has no data for that day
+    code: string;
+    name: string;
+    changes: IndividualStockChangeItem[];
+  }>;
+  stats: Record<string, { count: number; label: string }>; // keyed by raw type code; label = Chinese display name ('' for unknown codes)
+}
+```
+
+> **Full 30-day view**: tick-level changes are limited by the server window; for the days beyond it combine `fundFlow.individual` (daily main-capital history), local limit-up detection from K-lines, and `dragonTiger.detail` — see the [guide: 30-day per-stock changes panorama](/en/guide/stock-changes-panorama).
 
 ---
 

@@ -18,7 +18,7 @@
 - 行业板块、概念板块数据
 - 资金流向（个股 / 大盘 / 排名 / 板块深度）、盘口大单
 - 沪深港通 / 北向资金（分时 / 汇总 / 持股排行 / 历史）
-- 涨停跌停股池（含连板数）、盘口异动、板块异动
+- 涨停跌停股池（含连板数）、盘口异动（支持多类型/all + 个股当日与近 N 天异动历史）、板块异动
 - 龙虎榜（详情 / 个股统计 / 机构 / 营业部 / 席位明细）
 - 大宗交易、融资融券
 - 公募基金扩展（分红 / 历史净值 / 实时估值 / 同类排名 / 档案）
@@ -517,7 +517,9 @@ stock-sdk mcp
 | 方法 | 说明 |
 |------|------|
 | `marketEvent.ztPool(type, date?)` | 涨停 / 跌停 / 强势等股池（含连板数） |
-| `marketEvent.stockChanges(type)` | 盘口异动（22 种类型） |
+| `marketEvent.stockChanges(type)` | 盘口异动（22 种类型;支持数组多类型 / 'all' 自动翻页收全） |
+| `marketEvent.individualChanges(symbol, options)` | 个股当日异动事件流（全类型;服务端窗口约最近 17 个交易日） |
+| `marketEvent.individualChangesHistory(symbol, options)` | 个股近 N 天异动历史（逐交易日聚合,coverage/available 标注 + stats 计数） |
 | `marketEvent.boardChanges()` | 当日板块异动 |
 
 ### 龙虎榜

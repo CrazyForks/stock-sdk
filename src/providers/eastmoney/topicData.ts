@@ -11,12 +11,16 @@ import {
   todayInTz,
   MARKET_TZ,
 } from '../../core';
+import { normalizeSymbol, toEastmoneySecid } from '../../symbols';
+import { toIsoDate } from './utils';
 import type {
   ZTPoolType,
   ZTPoolItem,
   StockChangeType,
   StockChangeItem,
   BoardChangeItem,
+  IndividualStockChangeItem,
+  IndividualChangesDay,
 } from '../../types';
 
 /**
@@ -38,15 +42,36 @@ interface ZTPoolResponse {
   } | null;
 }
 
-/** 个股盘口异动响应 */
+/** 全市场盘口异动响应 */
 interface StockChangesResponse {
   data?: {
+    /** 符合条件的事件总数(分页依据) */
+    tc?: number | string;
     allstock?: Array<{
       tm?: number | string;
       c?: string;
       n?: string;
       t?: number | string;
       i?: string;
+      [key: string]: unknown;
+    }>;
+  } | null;
+}
+
+/** 个股按日盘口异动响应(getStockChanges?code=&market=&date=) */
+interface IndividualStockChangesResponse {
+  data?: {
+    d?: number | string;
+    c?: string;
+    m?: number | string;
+    n?: string;
+    data?: Array<{
+      tm?: number | string;
+      t?: number | string;
+      p?: number | string;
+      i?: string;
+      u?: string;
+      v?: number | string;
       [key: string]: unknown;
     }>;
   } | null;
@@ -93,6 +118,13 @@ const STOCK_CHANGE_TYPE_TO_CODE: Record<StockChangeType, string> = {
   low_60d: '8214',
   drop_60d: '8216',
 };
+
+/** 服务端代码 → 异动类型(响应 t 码反查;个股接口会返回 22 类之外的码,查不到即 'unknown') */
+const STOCK_CHANGE_CODE_TO_TYPE: Record<string, StockChangeType> = Object.fromEntries(
+  (Object.entries(STOCK_CHANGE_TYPE_TO_CODE) as [StockChangeType, string][]).map(
+    ([type, code]) => [code, type]
+  )
+) as Record<string, StockChangeType>;
 
 /** 服务端代码 → 中文标签 */
 const STOCK_CHANGE_CODE_TO_LABEL: Record<string, string> = {
@@ -253,48 +285,166 @@ export async function getZTPool(
   return pool.map(parseZTPoolRow);
 }
 
+/** 全市场异动单页大小(服务端上限;全类型当日总量可达 1.5 万+,需按 tc 翻页) */
+const STOCK_CHANGES_PAGE_SIZE = 5000;
+/** 翻页安全上限(5 万条,远超实测全类型单日总量,防服务端 tc 异常导致死循环) */
+const STOCK_CHANGES_MAX_PAGES = 10;
+
 /**
- * 获取个股盘口异动
+ * 获取全市场盘口异动
  *
  * @param client - 请求客户端
- * @param type - 异动类型（如 'large_buy' 大笔买入）
- * @returns 当日异动列表
+ * @param type - 异动类型:单个(如 'large_buy')/ 数组(一次请求多类型)/ 'all'(全部 22 类)。
+ *               总量超单页 5000 时自动按服务端 tc 翻页收全。
+ * @returns 当日异动列表(每条的实际类型由响应 t 码标注,见 changeType / typeCode)
  */
 export async function getStockChanges(
   client: RequestClient,
-  type: StockChangeType = 'large_buy'
+  type: StockChangeType | StockChangeType[] | 'all' = 'large_buy'
 ): Promise<StockChangeItem[]> {
-  const code = STOCK_CHANGE_TYPE_TO_CODE[type];
-  if (!code) {
-    throw new InvalidArgumentError(`Invalid StockChangeType: ${type}.`);
+  const types: StockChangeType[] =
+    type === 'all'
+      ? (Object.keys(STOCK_CHANGE_TYPE_TO_CODE) as StockChangeType[])
+      : Array.isArray(type)
+        ? type
+        : [type];
+  if (types.length === 0) {
+    throw new InvalidArgumentError('StockChangeType 数组不能为空。');
   }
+  const codes = types.map((t) => {
+    const c = STOCK_CHANGE_TYPE_TO_CODE[t];
+    if (!c) {
+      throw new InvalidArgumentError(`Invalid StockChangeType: ${t}.`);
+    }
+    return c;
+  });
+  // 单类型请求且响应缺 t 字段时,回退到请求的类型码(兼容旧行为)
+  const singleCodeFallback = codes.length === 1 ? codes[0] : '';
 
-  // 反向构建 code → label，以便从原始 t 字段还原中文标签
+  const all: StockChangeItem[] = [];
+  let total: number | null = null;
+  for (let page = 0; page < STOCK_CHANGES_MAX_PAGES; page++) {
+    const params = new URLSearchParams({
+      pageindex: String(page),
+      pagesize: String(STOCK_CHANGES_PAGE_SIZE),
+      ut: EM_PUSH_TOKEN,
+      dpt: 'wzchanges',
+    });
+
+    // type 必须保持【裸逗号】拼接:URLSearchParams 会把 ',' 编码成 '%2C',
+    // 服务端不解码,实测只会识别第一个类型码(多类型静默退化为单类型)。
+    // codes 均为纯数字串,直拼无注入风险。
+    const url = `${EM_TOPIC_BASE_URL}/getAllStockChanges?type=${codes.join(',')}&${params.toString()}`;
+    const json = await client.get<StockChangesResponse>(url, { responseType: 'json' });
+
+    const tc = toNumberSafe(json?.data?.tc);
+    if (tc !== null) total = tc;
+    const list = json?.data?.allstock;
+    if (!Array.isArray(list) || list.length === 0) break;
+
+    for (const item of list) {
+      const tCode = String(item.t ?? singleCodeFallback);
+      all.push({
+        time: formatTime(item.tm),
+        code: String(item.c ?? ''),
+        name: String(item.n ?? ''),
+        typeCode: tCode,
+        changeType: STOCK_CHANGE_CODE_TO_TYPE[tCode] ?? 'unknown',
+        changeTypeLabel: STOCK_CHANGE_CODE_TO_LABEL[tCode] ?? '',
+        info: String(item.i ?? ''),
+      });
+    }
+
+    // 非满页 → 已到末页;已知总数且收满 → 提前结束
+    if (list.length < STOCK_CHANGES_PAGE_SIZE) break;
+    if (total !== null && all.length >= total) break;
+  }
+  return all;
+}
+
+/**
+ * 获取单只 A 股某个交易日的盘口异动事件流。
+ *
+ * 数据源为 push2ex 的个股接口(akshare 未收录):返回该股当日**全部类型**的
+ * 异动事件(含 22 类之外的类型码,如 8219,解析按未知码容错),
+ * 事件顺序与服务端一致(最新在前)。
+ *
+ * 服务端仅保留约最近数周的数据(实测 1 个月左右,且**不保证连续**,
+ * 存在个别日期空洞):无数据的日期返回 `available: false` 且 `changes` 为空,
+ * 与"当日无异动"(`available: true` + 空数组)可区分。
+ *
+ * @param client - 请求客户端
+ * @param symbol - 股票代码(如 '600519' / 'sh600519',经 symbols 层归一)
+ * @param date - 交易日 YYYYMMDD 或 YYYY-MM-DD;不传为北京时间今天
+ */
+export async function getIndividualStockChanges(
+  client: RequestClient,
+  symbol: string,
+  date?: string
+): Promise<IndividualChangesDay> {
+  const ns = normalizeSymbol(symbol, { market: 'CN' });
+  // 盘口异动仅个股有语义:板块(secid 前缀 90)/指数等传给该接口会被服务端
+  // 静默回 data:null,与"超保留窗口"不可区分 —— 零请求即拒更诚实。
+  // 已知边界:交易所同码歧义(如 sh000001 上证指数 vs 平安银行)在 symbols
+  // 层归类为 stock,守卫放行、由服务端回空 —— 只拦"确定非个股"的输入
+  if (ns.assetType !== 'stock') {
+    throw new InvalidArgumentError(
+      `个股盘口异动仅支持 A 股个股,收到 assetType='${ns.assetType}'(symbol=${symbol})`,
+      { argument: 'symbol', value: symbol, assetType: ns.assetType }
+    );
+  }
+  // secid 形如 '1.603087' / '0.000001' → 接口要求拆分的 market= 与 code= 参数
+  const [market, code] = toEastmoneySecid(ns).split('.');
+  const queryDate = normalizeDate(date) ?? getBeijingDateString();
+  const isoDate = toIsoDate(queryDate);
+
   const params = new URLSearchParams({
-    type: code,
-    pageindex: '0',
-    pagesize: '5000',
     ut: EM_PUSH_TOKEN,
     dpt: 'wzchanges',
+    code,
+    market,
+    date: queryDate,
   });
 
-  const url = `${EM_TOPIC_BASE_URL}/getAllStockChanges?${params.toString()}`;
-  const json = await client.get<StockChangesResponse>(url, { responseType: 'json' });
+  const url = `${EM_TOPIC_BASE_URL}/getStockChanges?${params.toString()}`;
+  const json = await client.get<IndividualStockChangesResponse>(url, {
+    responseType: 'json',
+  });
 
-  const list = json?.data?.allstock;
-  if (!Array.isArray(list) || list.length === 0) return [];
+  const data = json?.data;
+  // data 为 null = 超出服务端保留窗口(与"当日无异动"的空事件列表区分)
+  if (!data) {
+    return { date: isoDate, available: false, code: ns.code, name: '', changes: [] };
+  }
 
-  return list.map((item) => {
-    const tCode = String(item.t ?? code);
+  const list = Array.isArray(data.data) ? data.data : [];
+  const changes: IndividualStockChangeItem[] = list.map((item) => {
+    const tCode = String(item.t ?? '');
+    const priceRaw = toNumberSafe(item.p);
     return {
       time: formatTime(item.tm),
-      code: String(item.c ?? ''),
-      name: String(item.n ?? ''),
-      changeType: type,
+      typeCode: tCode,
+      changeType: STOCK_CHANGE_CODE_TO_TYPE[tCode] ?? 'unknown',
       changeTypeLabel: STOCK_CHANGE_CODE_TO_LABEL[tCode] ?? '',
+      price: priceRaw !== null ? priceRaw / 1000 : null,
+      changePercent: toNumberSafe(item.u),
       info: String(item.i ?? ''),
+      v: toNumberSafe(item.v),
     };
   });
+
+  // date 优先取服务端回显(data.d):请求非交易日时服务端会回退到最近交易日,
+  // 用请求日标注会把上一交易日的事件标错日期(类型契约承诺 date 是交易日)
+  const echoed = String(data.d ?? '');
+  const resultDate = /^\d{8}$/.test(echoed) ? toIsoDate(echoed) : isoDate;
+
+  return {
+    date: resultDate,
+    available: true,
+    code: String(data.c ?? ns.code),
+    name: String(data.n ?? ''),
+    changes,
+  };
 }
 
 /**

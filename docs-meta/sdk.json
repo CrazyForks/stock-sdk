@@ -213,7 +213,9 @@
         "methods": [
           "marketEvent.ztPool",
           "marketEvent.stockChanges",
-          "marketEvent.boardChanges"
+          "marketEvent.boardChanges",
+          "marketEvent.individualChanges",
+          "marketEvent.individualChangesHistory"
         ]
       },
       {

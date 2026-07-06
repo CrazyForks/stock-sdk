@@ -78,6 +78,9 @@ export const DEFAULT_VALUES: Record<string, Record<string, string>> = {
   'fundFlow.sectorHistory': { symbol: 'BK0438' },
   // ===== northbound =====
   'northbound.individual': { symbol: '600519' },
+  // ===== marketEvent =====
+  'marketEvent.individualChanges': { symbol: '600519' },
+  'marketEvent.individualChangesHistory': { symbol: '600519' },
   // ===== dragonTiger（detail/institution 必填日期区间 → 近 7 天） =====
   'dragonTiger.detail': { startDate: dt7.start, endDate: dt7.end },
   'dragonTiger.institution': { startDate: dt7.start, endDate: dt7.end },

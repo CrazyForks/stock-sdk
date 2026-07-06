@@ -7,6 +7,8 @@ export { StockSDK, default } from './sdk';
 export type {
   MarketType,
   ChipDistributionRequestOptions,
+  IndividualChangesOptions,
+  IndividualChangesHistoryOptions,
   GetAllAShareQuotesOptions,
   AShareMarket,
   GetAShareCodeListOptions,

@@ -136,6 +136,8 @@ const STOCK_CHANGE_TYPES: string[] = [
   'low_60d', // 60 日新低
   'drop_60d', // 60 日大幅下跌
 ];
+/** 盘口异动类型 + 'all'(一次拉全部 22 类;SDK 层还支持数组,CLI/MCP 用 all 即可) */
+const STOCK_CHANGE_TYPES_WITH_ALL: string[] = [...STOCK_CHANGE_TYPES, 'all'];
 
 // ---------- 可复用参数片段（CLI 旧 manifest 的 option 片段在此单一来源化） ----------
 /** 复权（个股/期货 K 线默认 qfq；板块用 BOARD_ADJUST 变体覆盖默认与 MCP 文案）。 */
@@ -1102,7 +1104,7 @@ export const METHOD_SPECS: MethodSpec[] = [
     positional: [SYMBOL_REQ(STOCK_SYMBOL_DESC)],
     params: [START_NB_MCP_ONLY, END_NB_MCP_ONLY],
   },
-  // ===== marketEvent (3) =====
+  // ===== marketEvent (5) =====
   {
     path: ['marketEvent', 'ztPool'],
     toolName: 'get_zt_pool',
@@ -1126,23 +1128,66 @@ export const METHOD_SPECS: MethodSpec[] = [
   {
     path: ['marketEvent', 'stockChanges'],
     toolName: 'get_stock_changes',
-    summary: '盘口异动',
+    summary: '盘口异动(type 可传 all 拉全类型)',
     mcpDesc:
-      '获取当日盘口异动列表（东方财富）：每条含发生时间(HH:MM:SS)、代码、名称、异动类型及中文标签、相关信息。' +
-      'type 不传默认 large_buy(大笔买入)。',
+      '获取当日盘口异动列表（东方财富）：每条含发生时间(HH:MM:SS)、代码、名称、异动类型(changeType/typeCode)及中文标签、相关信息。' +
+      "type 不传默认 large_buy(大笔买入);传 'all' 一次拉取全部 22 类(总量可达上万条,自动翻页收全,MCP tools/call 超 200 条会被裁剪)。",
     argShape: 'positional',
     positional: [
       {
         name: 'type',
-        enum: STOCK_CHANGE_TYPES,
+        enum: STOCK_CHANGE_TYPES_WITH_ALL,
         default: 'large_buy',
         desc:
-          '异动类型筛选：rocket_launch=火箭发射 / quick_rebound=快速反弹 / large_buy=大笔买入 / ' +
+          '异动类型筛选(all=全部 22 类)：rocket_launch=火箭发射 / quick_rebound=快速反弹 / large_buy=大笔买入 / ' +
           'limit_up_seal=封涨停板 / limit_down_open=打开跌停板 / big_buy_order=有大买盘 / auction_up=竞价上涨 / ' +
           'high_open_5d=高开5日线 / gap_up=向上缺口 / high_60d=60日新高 / surge_60d=60日大幅上涨 / ' +
           'accelerate_down=加速下跌 / high_dive=高台跳水 / large_sell=大笔卖出 / limit_down_seal=封跌停板 / ' +
           'limit_up_open=打开涨停板 / big_sell_order=有大卖盘 / auction_down=竞价下跌 / low_open_5d=低开5日线 / ' +
           'gap_down=向下缺口 / low_60d=60日新低 / drop_60d=60日大幅下跌',
+      },
+    ],
+  },
+  {
+    path: ['marketEvent', 'individualChanges'],
+    toolName: 'get_individual_stock_changes',
+    summary: '个股当日盘口异动',
+    mcpDesc:
+      '获取单只 A 股某个交易日的盘口异动事件流（东方财富）：时间、类型(changeType/typeCode,含中文标签)、' +
+      '触发价(元)、涨跌幅(%)、相关信息;全部类型一次返回,最新在前。date 不传为今天。' +
+      '注意:服务端仅保留约最近数周数据(且可能有个别日期空洞),无数据日期返回空数组;' +
+      '需要区分"超窗"与"当日无异动"请用 get_individual_stock_changes_history(逐日带 available 标记)。',
+    argShape: 'symbol+options',
+    positional: [SYMBOL_REQ('股票代码，如 600519 / sh600519')],
+    params: [
+      {
+        flag: 'date',
+        type: 'string',
+        desc: '交易日 YYYYMMDD 或 YYYY-MM-DD,不传为今天',
+        mcpDesc: '交易日 YYYYMMDD 或 YYYY-MM-DD;不传为北京时间今天',
+      },
+    ],
+  },
+  {
+    path: ['marketEvent', 'individualChangesHistory'],
+    toolName: 'get_individual_stock_changes_history',
+    summary: '个股近N天异动历史(--days 7)',
+    mcpDesc:
+      '聚合单只 A 股最近 N 个自然日的盘口异动（按交易日历逐交易日请求后合并）：' +
+      'days 数组按日期升序,每日含 available 标记与事件流;coverage 标注实际覆盖范围' +
+      '(服务端仅保留约最近数周且可能有空洞日,无数据日期 available=false);' +
+      'stats 以原始类型码为键给出各类型计数(含中文标签)。days 默认 7,范围 1~60。' +
+      '⚠️ 返回为嵌套对象:序列化超约 80KB 会被整体省略(仅返回提示,拿不到任何数据);' +
+      '事件多的活跃标的请用较小 days 分段查询,或改用 get_individual_stock_changes 逐日获取。',
+    argShape: 'symbol+options',
+    positional: [SYMBOL_REQ('股票代码，如 600519 / sh600519')],
+    params: [
+      {
+        flag: 'days',
+        type: 'number',
+        default: 7,
+        desc: '最近 N 个自然日(1~60,默认 7)',
+        mcpDesc: '最近 N 个自然日,默认 7,最大 60',
       },
     ],
   },

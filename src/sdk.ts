@@ -71,7 +71,7 @@ export class StockSDK {
     this.chipService = new ChipService(this.klineService);
     this.fundFlowService = new FundFlowService(this.client);
     this.northboundService = new NorthboundService(this.client);
-    this.marketEventService = new MarketEventService(this.client);
+    this.marketEventService = new MarketEventService(this.client, this.quoteService);
     this.dragonTigerService = new DragonTigerService(this.client);
     this.dataService = new DataService(this.client);
     this.tradingCalendarService = new TradingCalendarService(this.quoteService);
@@ -270,6 +270,8 @@ export class StockSDK {
         ztPool: m.getZTPool.bind(m),
         stockChanges: m.getStockChanges.bind(m),
         boardChanges: m.getBoardChanges.bind(m),
+        individualChanges: m.getIndividualChanges.bind(m),
+        individualChangesHistory: m.getIndividualChangesHistory.bind(m),
       };
     });
   }
@@ -365,6 +367,8 @@ export type {
   MarketType,
   KlineWithIndicatorsOptions,
   ChipDistributionRequestOptions,
+  IndividualChangesOptions,
+  IndividualChangesHistoryOptions,
 } from './sdk/index';
 
 export default StockSDK;

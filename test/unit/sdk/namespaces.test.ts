@@ -44,6 +44,8 @@ describe('namespace API — 一级命名空间', () => {
     expect(typeof sdk.fundFlow.individual).toBe('function');
     expect(typeof sdk.northbound.minute).toBe('function');
     expect(typeof sdk.marketEvent.ztPool).toBe('function');
+    expect(typeof sdk.marketEvent.individualChanges).toBe('function');
+    expect(typeof sdk.marketEvent.individualChangesHistory).toBe('function');
     expect(typeof sdk.dragonTiger.detail).toBe('function');
   });
 
