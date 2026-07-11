@@ -178,14 +178,14 @@ Cursor / Claude Desktop 等配置 `mcpServers`：`{ "command": "npx", "args": ["
     - `options.startDate` (string, SDK / MCP): 开始时间 YYYY-MM-DD HH:mm（港股本地时区）
     - `options.endDate` (string, SDK / MCP): 结束时间 YYYY-MM-DD HH:mm（港股本地时区）
     - `options.ndays` (number, SDK / MCP): 仅 period=1 生效：返回最近 N 个交易日的分时，默认 1（当日）
-- **`sdk.kline.us(symbol, options?)`** — 美股历史 K 线（日 / 周 / 月，含复权，币种 USD）。代码格式 {market}.{ticker}（如 105.AAPL / 106.BABA）。复权默认 qfq；日期格式 YYYYMMDD。
-    - `symbol` (位置参数, 必填): 美股代码，格式 {market}.{ticker}，如 105.AAPL / 106.BABA
+- **`sdk.kline.us(symbol, options?)`** — 美股历史 K 线（日 / 周 / 月，含复权，币种 USD）。代码支持裸 ticker（如 AAPL / BABA，自动解析交易所）或显式 secid（105.AAPL / 106.BABA）。复权默认 qfq；日期格式 YYYYMMDD。
+    - `symbol` (位置参数, 必填): 美股代码，裸 ticker（AAPL）或 secid（105.AAPL / 106.BABA）均可
     - `options.period` (daily | weekly | monthly, 默认 daily, SDK / MCP): 历史 K 线周期
     - `options.adjust` (qfq | hfq | none, 默认 qfq, SDK / MCP): 复权：qfq=前复权(默认,看走势) / hfq=后复权(算收益) / ''=不复权
     - `options.startDate` (string, SDK / MCP): 起始日期 YYYYMMDD
     - `options.endDate` (string, SDK / MCP): 结束日期 YYYYMMDD
-- **`sdk.kline.usMinute(symbol, options?)`** — 美股分钟 K 线 / 当日分时（仅常规交易时段，不含盘前 / 盘后）。period=1 返回当日分时（不支持复权，可用 recentDays 取近 N 日）；period=5/15/30/60 返回分钟 K 线（adjust 仅此时有效，默认 qfq）。代码格式 {market}.{ticker}，如 105.AAPL。
-    - `symbol` (位置参数, 必填): 美股代码，格式 {market}.{ticker}，如 105.AAPL / 106.BABA
+- **`sdk.kline.usMinute(symbol, options?)`** — 美股分钟 K 线 / 当日分时（仅常规交易时段，不含盘前 / 盘后）。period=1 返回当日分时（不支持复权，可用 recentDays 取近 N 日）；period=5/15/30/60 返回分钟 K 线（adjust 仅此时有效，默认 qfq）。代码支持裸 ticker（AAPL）或 secid（105.AAPL）。
+    - `symbol` (位置参数, 必填): 美股代码，裸 ticker（AAPL）或 secid（105.AAPL / 106.BABA）均可
     - `options.period` (1 | 5 | 15 | 30 | 60, 默认 1, SDK / MCP): 分钟周期；1=当日分时
     - `options.adjust` (qfq | hfq | none, 默认 qfq, SDK / MCP): 复权：qfq=前复权(默认,看走势) / hfq=后复权(算收益) / ''=不复权
     - `options.ndays` (number, SDK / MCP): 仅 period=1 生效：返回最近 N 个交易日的分时，默认 1（当日）
@@ -233,7 +233,7 @@ Cursor / Claude Desktop 等配置 `mcpServers`：`{ "command": "npx", "args": ["
     - `options.includeHistogram` (last | all, SDK / MCP): 筹码峰直方图(150 价格档的占比分布)：last=仅最后一日附带 / all=每日都附带；不传则不附带
     - `options.decimals` (number, 默认 3, SDK / MCP): 获利比例 / 集中度的舍入小数位，默认 3(价格类字段固定 2 位)
 - **`sdk.chips.us(symbol, options?)`** — 美股筹码分布 / 筹码峰（基于东财美股日 K 线 + 换手率本地计算，同 A 股 CYQ 算法）：每日获利比例、平均成本、90/70 成本区间与集中度。days 默认 90；range 默认 120（0 = 全量累计）。换手率为东财口径（交易所公开成交量 / 流通股本），不含暗池细节。
-    - `symbol` (位置参数, 必填): 美股代码，格式 {market}.{ticker}，如 105.AAPL / 106.BABA
+    - `symbol` (位置参数, 必填): 美股代码，裸 ticker（AAPL）或 secid（105.AAPL / 106.BABA）均可
     - `options.days` (number, 默认 90, SDK / MCP): 返回最近 N 个交易日的筹码分布序列，默认 90
     - `options.adjust` (qfq | hfq | none, 默认 qfq, SDK / MCP): 复权：qfq=前复权(默认,看走势) / hfq=后复权(算收益) / ''=不复权
     - `options.range` (number, 默认 120, SDK / MCP): 分布回看窗口(K 线根数)。默认 120 = 东财 App 显示口径；0 = 从上市首日全量累计(akshare stock_cyq_em 口径，计算量更大)

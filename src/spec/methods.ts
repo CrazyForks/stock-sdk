@@ -657,10 +657,11 @@ export const METHOD_SPECS: MethodSpec[] = [
     tier: 'core',
     summary: '美股历史K线',
     mcpDesc:
-      '美股历史 K 线（日 / 周 / 月，含复权，币种 USD）。代码格式 {market}.{ticker}' +
-      '（如 105.AAPL / 106.BABA）。复权默认 qfq；日期格式 YYYYMMDD。',
+      '美股历史 K 线（日 / 周 / 月，含复权，币种 USD）。代码支持裸 ticker' +
+      '（如 AAPL / BABA，自动解析交易所）或显式 secid（105.AAPL / 106.BABA）。' +
+      '复权默认 qfq；日期格式 YYYYMMDD。',
     argShape: 'symbol+options',
-    positional: [SYMBOL_REQ('美股代码，格式 {market}.{ticker}，如 105.AAPL / 106.BABA')],
+    positional: [SYMBOL_REQ('美股代码，裸 ticker（AAPL）或 secid（105.AAPL / 106.BABA）均可')],
     params: [PERIOD_DWM, ADJUST, START, END],
   },
   // 美股分时：MCP 现行 schema 不含时间窗口（仅 recentDays），CLI 侧 --start/--end 保留
@@ -671,9 +672,9 @@ export const METHOD_SPECS: MethodSpec[] = [
     mcpDesc:
       '美股分钟 K 线 / 当日分时（仅常规交易时段，不含盘前 / 盘后）。period=1 返回当日分时' +
       '（不支持复权，可用 recentDays 取近 N 日）；period=5/15/30/60 返回分钟 K 线' +
-      '（adjust 仅此时有效，默认 qfq）。代码格式 {market}.{ticker}，如 105.AAPL。',
+      '（adjust 仅此时有效，默认 qfq）。代码支持裸 ticker（AAPL）或 secid（105.AAPL）。',
     argShape: 'symbol+options',
-    positional: [SYMBOL_REQ('美股代码，格式 {market}.{ticker}，如 105.AAPL / 106.BABA')],
+    positional: [SYMBOL_REQ('美股代码，裸 ticker（AAPL）或 secid（105.AAPL / 106.BABA）均可')],
     params: [PERIOD_MIN, ADJUST, START_CLI_ONLY, END_CLI_ONLY, NDAYS],
   },
   // MCP 工具手写（mcpCustom）：MCP 用嵌套 indicators 对象，CLI 用 14 个扁平指标 flag
@@ -733,7 +734,7 @@ export const METHOD_SPECS: MethodSpec[] = [
       '每日获利比例、平均成本、90/70 成本区间与集中度。days 默认 90；range 默认 120（0 = 全量累计）。' +
       '换手率为东财口径（交易所公开成交量 / 流通股本），不含暗池细节。',
     argShape: 'symbol+options',
-    positional: [SYMBOL_REQ('美股代码，格式 {market}.{ticker}，如 105.AAPL / 106.BABA')],
+    positional: [SYMBOL_REQ('美股代码，裸 ticker（AAPL）或 secid（105.AAPL / 106.BABA）均可')],
     params: CHIP_PARAMS,
   },
   // ===== board (10) =====
