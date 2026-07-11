@@ -4,7 +4,13 @@
 import { RequestClient } from '../../core';
 import type { FullQuote, SimpleQuote } from '../../types';
 import { tryToTencentSymbols } from '../../symbols';
-import { parseFullQuote, parseSimpleQuote } from './parsers';
+import {
+  parseFullQuote,
+  parseSimpleQuote,
+  filterTencentRows,
+  FULL_QUOTE_MIN_FIELDS,
+  SIMPLE_QUOTE_MIN_FIELDS,
+} from './parsers';
 
 /**
  * 获取 A 股 / 指数 全量行情
@@ -29,15 +35,9 @@ export async function getFullQuotes(
   // 腾讯无匹配时会返回 v_pv_none_match="1"（fields=['1']），靠 fields[0]
   // 过滤拦不住；这里改成只接受我们请求过的 key，彻底避免"空壳行情"。
   const wanted = new Set(keys);
-  return data
-    .filter(
-      (d) =>
-        wanted.has(d.key) &&
-        d.fields &&
-        d.fields.length > 5 &&
-        d.fields[0] !== ''
-    )
-    .map((d) => parseFullQuote(d.fields));
+  return filterTencentRows(data, wanted, FULL_QUOTE_MIN_FIELDS).map((d) =>
+    parseFullQuote(d.fields)
+  );
 }
 
 /**
@@ -59,14 +59,8 @@ export async function getSimpleQuotes(
   const prefixedCodes = keys.map((key) => `s_${key}`);
   const data = await client.getTencentQuote(prefixedCodes.join(','));
   const wanted = new Set(prefixedCodes);
-  return data
-    .filter(
-      (d) =>
-        wanted.has(d.key) &&
-        d.fields &&
-        d.fields.length > 5 &&
-        d.fields[0] !== ''
-    )
-    .map((d) => parseSimpleQuote(d.fields));
+  return filterTencentRows(data, wanted, SIMPLE_QUOTE_MIN_FIELDS).map((d) =>
+    parseSimpleQuote(d.fields)
+  );
 }
 

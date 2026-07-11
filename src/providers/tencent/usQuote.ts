@@ -4,7 +4,7 @@
 import { RequestClient } from '../../core';
 import type { USQuote } from '../../types';
 import { tryToTencentSymbols } from '../../symbols';
-import { parseUSQuote } from './parsers';
+import { parseUSQuote, filterTencentRows, US_QUOTE_MIN_FIELDS } from './parsers';
 
 /**
  * 获取美股行情
@@ -27,14 +27,8 @@ export async function getUSQuotes(
   const data = await client.getTencentQuote(keys.join(','));
   // 腾讯无匹配时会回 v_pv_none_match="1"，按 key 精确过滤
   const wanted = new Set(keys);
-  return data
-    .filter(
-      (d) =>
-        wanted.has(d.key) &&
-        d.fields &&
-        d.fields.length > 5 &&
-        d.fields[0] !== ''
-    )
-    .map((d) => parseUSQuote(d.fields));
+  return filterTencentRows(data, wanted, US_QUOTE_MIN_FIELDS).map((d) =>
+    parseUSQuote(d.fields)
+  );
 }
 

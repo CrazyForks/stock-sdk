@@ -12,6 +12,50 @@ import type {
   FundQuote,
 } from '../../types';
 
+// ============================================================
+// R7-9: 行完整性过滤（与各解析器共置，阈值改动跟着解析器走；
+// test/unit/providers/tencent/parsers.minfields.test.ts 用 Proxy 记录
+// 实际最大访问下标，机械钉住常量与解析器不漂移）
+// ============================================================
+
+/** parseFullQuote 最高访问 f[73]（totalShares） */
+export const FULL_QUOTE_MIN_FIELDS = 74;
+/** parseSimpleQuote 最高访问 f[10]（marketType） */
+export const SIMPLE_QUOTE_MIN_FIELDS = 11;
+/** parseHKQuote 最高固定下标 f[45]（currency 为尾部相对下标，另有语义校验兜底） */
+export const HK_QUOTE_MIN_FIELDS = 46;
+/** parseUSQuote 最高访问 f[49]（low52w） */
+export const US_QUOTE_MIN_FIELDS = 50;
+/** parseFundQuote 最高访问 f[8] */
+export const FUND_QUOTE_MIN_FIELDS = 9;
+/** parseFundFlow 最高访问 f[13] */
+export const FUND_FLOW_MIN_FIELDS = 14;
+/** parsePanelLargeOrder 最高访问 f[3] */
+export const PANEL_LARGE_ORDER_MIN_FIELDS = 4;
+
+/**
+ * 腾讯行情行完整性过滤：只接受请求过的 key、字段数达到解析器最高访问
+ * 下标 +1、非空首字段。
+ *
+ * 此前 7 个入口各自手写且阈值已分叉（quote/hk/us 用宽松 `>5`，而解析器
+ * 最高读到 f[73]）：截断行通过过滤后 safeNumber(undefined)=0，涨跌幅 /
+ * 高低 / 成交额被伪造成 0，与真实数据无法区分。行为变化：截断行从
+ * "伪造 0 值"改为整行丢弃（v_pv_none_match 的 fields=['1'] 同样被长度门拦截）。
+ */
+export function filterTencentRows(
+  data: Array<{ key: string; fields: string[] }>,
+  wanted: ReadonlySet<string>,
+  minFields: number
+): Array<{ key: string; fields: string[] }> {
+  return data.filter(
+    (d) =>
+      wanted.has(d.key) &&
+      d.fields &&
+      d.fields.length >= minFields &&
+      d.fields[0] !== ''
+  );
+}
+
 /**
  * 解析 A 股全量行情
  */
@@ -157,7 +201,10 @@ export function parseHKQuote(f: string[]): HKQuote {
     lotSize: safeNumberOrNull(f[40]),
     circulatingMarketCap: safeNumberOrNull(f[44]),
     totalMarketCap: safeNumberOrNull(f[45]),
-    currency: f[f.length - 3] ?? '',
+    // R7-9: 尾部相对下标是长度门保护不了的 —— 真实行 ~50 字段（f[47]='HKD'），
+    // 46-49 字段的截断/变体行会让 f[length-3] 落在数值列上。币种必须长得像
+    // 币种（3 位大写字母），否则置空而不是输出一个价格串
+    currency: /^[A-Z]{3}$/.test(f[f.length - 3] ?? '') ? f[f.length - 3] : '',
     market: 'HK',
     assetType: 'stock',
     source: 'tencent',

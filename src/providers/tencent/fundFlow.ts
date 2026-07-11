@@ -4,7 +4,13 @@
 import { RequestClient } from '../../core';
 import type { FundFlow, PanelLargeOrder } from '../../types';
 import { tryToTencentSymbols } from '../../symbols';
-import { parseFundFlow, parsePanelLargeOrder } from './parsers';
+import {
+  parseFundFlow,
+  parsePanelLargeOrder,
+  filterTencentRows,
+  FUND_FLOW_MIN_FIELDS,
+  PANEL_LARGE_ORDER_MIN_FIELDS,
+} from './parsers';
 
 /**
  * 获取资金流向
@@ -29,15 +35,9 @@ export async function getFundFlow(
   // 腾讯无匹配时会返回 v_pv_none_match="1"，按 key 精确过滤；
   // parseFundFlow 最高访问 f[13]，要求至少 14 个字段。
   const wanted = new Set(prefixedCodes);
-  return data
-    .filter(
-      (d) =>
-        wanted.has(d.key) &&
-        d.fields &&
-        d.fields.length >= 14 &&
-        d.fields[0] !== ''
-    )
-    .map((d) => parseFundFlow(d.fields));
+  return filterTencentRows(data, wanted, FUND_FLOW_MIN_FIELDS).map((d) =>
+    parseFundFlow(d.fields)
+  );
 }
 
 /**
@@ -64,14 +64,8 @@ export async function getPanelLargeOrder(
   // 无法识别——它会被解析成 buyLargeRatio: 1 的伪结果。
   // parsePanelLargeOrder 最高访问 f[3]，要求至少 4 个字段。
   const wanted = new Set(prefixedCodes);
-  return data
-    .filter(
-      (d) =>
-        wanted.has(d.key) &&
-        d.fields &&
-        d.fields.length >= 4 &&
-        d.fields[0] !== ''
-    )
-    .map((d) => parsePanelLargeOrder(d.fields));
+  return filterTencentRows(data, wanted, PANEL_LARGE_ORDER_MIN_FIELDS).map((d) =>
+    parsePanelLargeOrder(d.fields)
+  );
 }
 
