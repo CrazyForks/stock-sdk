@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`R7-15②: MCP invoke 的 path / 位置参数 / options 键集快照 > 87 个 MCP 工具的调用契约与快照一致 1`] = `
+exports[`R7-15②: MCP invoke 的 path / 位置参数 / options 键集快照 > 92 个 MCP 工具的调用契约与快照一致 1`] = `
 {
   "get_a_share_code_list": {
     "argCount": 1,
@@ -49,6 +49,29 @@ exports[`R7-15②: MCP invoke 的 path / 位置参数 / options 键集快照 > 8
       "market",
     ],
     "path": "batch.us",
+  },
+  "get_block_trade_daily_stat": {
+    "argCount": 1,
+    "argShape": "options",
+    "optionKeys": [
+      "endDate",
+      "startDate",
+    ],
+    "path": "blockTrade.dailyStat",
+  },
+  "get_block_trade_detail": {
+    "argCount": 1,
+    "argShape": "options",
+    "optionKeys": [
+      "endDate",
+      "startDate",
+    ],
+    "path": "blockTrade.detail",
+  },
+  "get_block_trade_market_stat": {
+    "argCount": 0,
+    "argShape": "none",
+    "path": "blockTrade.marketStat",
   },
   "get_board_changes": {
     "argCount": 0,
@@ -412,6 +435,16 @@ exports[`R7-15②: MCP invoke 的 path / 位置参数 / options 键集快照 > 8
     "argCount": 1,
     "argShape": "positional",
     "path": "board.industry.spot",
+  },
+  "get_margin_account_info": {
+    "argCount": 0,
+    "argShape": "none",
+    "path": "margin.accountInfo",
+  },
+  "get_margin_target_list": {
+    "argCount": 1,
+    "argShape": "positional",
+    "path": "margin.targetList",
   },
   "get_market_fund_flow": {
     "argCount": 0,

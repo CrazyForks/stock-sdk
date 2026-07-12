@@ -400,18 +400,18 @@ Cursor / Claude Desktop 等配置 `mcpServers`：`{ "command": "npx", "args": ["
 
 ### `sdk.blockTrade`
 
-- **`sdk.blockTrade.marketStat()`** — 获取大宗交易市场每日总览（成交额、溢价率、买卖方统计等）。  _(仅 CLI / SDK，无 MCP 工具)_
-- **`sdk.blockTrade.detail(options?)`** — 获取大宗交易明细（按日期范围筛选）：成交价、成交量、买卖营业部等。省略日期则默认最近一段时间。  _(仅 CLI / SDK，无 MCP 工具)_
-    - `options.startDate` (string, SDK): 起始日期 YYYYMMDD 或 YYYY-MM-DD
-    - `options.endDate` (string, SDK): 结束日期 YYYYMMDD 或 YYYY-MM-DD
-- **`sdk.blockTrade.dailyStat(options?)`** — 获取大宗交易每日统计（按股票汇总）：成交笔数、成交额、溢价率等。省略日期则默认最近一段时间。  _(仅 CLI / SDK，无 MCP 工具)_
-    - `options.startDate` (string, SDK): 起始日期 YYYYMMDD 或 YYYY-MM-DD
-    - `options.endDate` (string, SDK): 结束日期 YYYYMMDD 或 YYYY-MM-DD
+- **`sdk.blockTrade.marketStat()`** — 获取大宗交易市场每日总览（成交额、溢价率、买卖方统计等）。
+- **`sdk.blockTrade.detail(options?)`** — 获取大宗交易明细（按日期范围筛选）：成交价、成交量、买卖营业部等。省略日期则默认最近一段时间。
+    - `options.startDate` (string, SDK / MCP): 起始日期 YYYYMMDD 或 YYYY-MM-DD
+    - `options.endDate` (string, SDK / MCP): 结束日期 YYYYMMDD 或 YYYY-MM-DD
+- **`sdk.blockTrade.dailyStat(options?)`** — 获取大宗交易每日统计（按股票汇总）：成交笔数、成交额、溢价率等。省略日期则默认最近一段时间。
+    - `options.startDate` (string, SDK / MCP): 起始日期 YYYYMMDD 或 YYYY-MM-DD
+    - `options.endDate` (string, SDK / MCP): 结束日期 YYYYMMDD 或 YYYY-MM-DD
 
 ### `sdk.margin`
 
-- **`sdk.margin.accountInfo()`** — 获取融资融券账户统计（融资余额、融券余量、两融余额等）。  _(仅 CLI / SDK，无 MCP 工具)_
-- **`sdk.margin.targetList(date?)`** — 获取融资融券标的明细列表（可融资 / 可融券标志、折算率等）。  _(仅 CLI / SDK，无 MCP 工具)_
+- **`sdk.margin.accountInfo()`** — 获取融资融券账户统计（融资余额、融券余量、两融余额等）。
+- **`sdk.margin.targetList(date?)`** — 获取融资融券标的明细列表（可融资 / 可融券标志、折算率等）。
     - `date` (位置参数, 可选): 交易日 YYYYMMDD 或 YYYY-MM-DD；不传则取最新可用日期
 
 ### `sdk.fund`

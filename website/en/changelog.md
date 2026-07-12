@@ -44,6 +44,7 @@ This release lands the Top-15 fixes from the 2026-07 whole-project review (R7-1 
 - `configureSharedCache(namespace, options)`: runtime reconfiguration of shared caches (new TTL affects subsequent writes; shrinking maxSize evicts immediately).
 - `tryToTencentSymbols(codes, market)` (`stock-sdk/symbols`): batch fault-tolerant normalization to Tencent quote keys, returning `{ keys, invalid }`.
 - `DatacenterQuery.concurrency`: wave size for datacenter pagination.
+- **5 MCP tools for block trades / margin trading**: `get_block_trade_market_stat` / `get_block_trade_detail` / `get_block_trade_daily_stat` / `get_margin_account_info` / `get_margin_target_list`. These two data domains were previously CLI / SDK-only with no MCP exposure; LLMs can now query block-trade overview/detail/daily-stats and margin account/target lists (the capability was already in the SDK — this only adds the MCP derivation).
 - Full spec ↔ SDK contract tests (R7-15): method paths and MCP options key sets are mechanically pinned; renames can no longer drift silently.
 
 ::: tip Long-lived processes should reuse a singleton SDK

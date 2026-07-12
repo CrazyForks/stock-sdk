@@ -82,7 +82,7 @@ export interface MethodSpec {
    * 与市场受限入口（batch.byCodes 仅 A 股）用本字段给出准确表述。
    */
   codesDesc?: string;
-  /** false → CLI-only 方法，MCP 无对应工具（如 batch.raw / blockTrade / margin）。 */
+  /** false → CLI-only 方法，MCP 无对应工具（目前仅 batch.raw：腾讯原始批量直通，不适合 LLM）。 */
   mcp?: false;
   /**
    * true → MCP 工具 schema/invoke 手写（src/mcp/tools/ 下），spec 仅提供
@@ -1272,40 +1272,41 @@ export const METHOD_SPECS: MethodSpec[] = [
       { name: 'date', required: true, desc: '上榜日期，YYYYMMDD 或 YYYY-MM-DD' },
     ],
   },
-  // ===== blockTrade (3) —— CLI-only（MCP 未暴露大宗交易工具） =====
+  // ===== blockTrade (3) =====
   {
     path: ['blockTrade', 'marketStat'],
+    toolName: 'get_block_trade_market_stat',
     summary: '大宗交易市场统计',
     mcpDesc: '获取大宗交易市场每日总览（成交额、溢价率、买卖方统计等）。',
     argShape: 'none',
-    mcp: false,
   },
   {
     path: ['blockTrade', 'detail'],
+    toolName: 'get_block_trade_detail',
     summary: '大宗交易明细',
     mcpDesc: '获取大宗交易明细（按日期范围筛选）：成交价、成交量、买卖营业部等。省略日期则默认最近一段时间。',
     argShape: 'options',
     params: BLOCK_TRADE_DATES,
-    mcp: false,
   },
   {
     path: ['blockTrade', 'dailyStat'],
+    toolName: 'get_block_trade_daily_stat',
     summary: '大宗交易每日统计',
     mcpDesc: '获取大宗交易每日统计（按股票汇总）：成交笔数、成交额、溢价率等。省略日期则默认最近一段时间。',
     argShape: 'options',
     params: BLOCK_TRADE_DATES,
-    mcp: false,
   },
-  // ===== margin (2) —— CLI-only =====
+  // ===== margin (2) =====
   {
     path: ['margin', 'accountInfo'],
+    toolName: 'get_margin_account_info',
     summary: '融资融券账户统计',
     mcpDesc: '获取融资融券账户统计（融资余额、融券余量、两融余额等）。',
     argShape: 'none',
-    mcp: false,
   },
   {
     path: ['margin', 'targetList'],
+    toolName: 'get_margin_target_list',
     summary: '融资融券标的',
     mcpDesc: '获取融资融券标的明细列表（可融资 / 可融券标志、折算率等）。',
     argShape: 'positional',
@@ -1315,7 +1316,6 @@ export const METHOD_SPECS: MethodSpec[] = [
         desc: '交易日 YYYYMMDD 或 YYYY-MM-DD；不传则取最新可用日期',
       },
     ],
-    mcp: false,
   },
   // ===== fund (5) =====
   {

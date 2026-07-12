@@ -44,6 +44,7 @@ pageClass: changelog-page
 - `configureSharedCache(namespace, options)`：运行时重配共享缓存（新 TTL 只影响后续写入，maxSize 收缩立即淘汰）。
 - `tryToTencentSymbols(codes, market)`（`stock-sdk/symbols`）：行情键批量容错归一，返回 `{ keys, invalid }`。
 - `DatacenterQuery.concurrency`：datacenter 系接口翻页并发波次大小。
+- **大宗交易 / 融资融券的 5 个 MCP 工具**：`get_block_trade_market_stat` / `get_block_trade_detail` / `get_block_trade_daily_stat` / `get_margin_account_info` / `get_margin_target_list`。此前这两个数据域仅 CLI / SDK 可用、MCP 未暴露；现在 LLM 也能查大宗交易总览/明细/每日统计与两融账户/标的（能力早已在 SDK，本次仅补 MCP 派生）。
 - spec ↔ SDK 全量 contract 测试（R7-15）：方法路径与 MCP options 键集机械钉住，重命名不再静默漂移。
 
 ::: tip 长驻进程建议复用单例 SDK
