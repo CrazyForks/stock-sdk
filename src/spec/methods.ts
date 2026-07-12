@@ -461,6 +461,8 @@ export const METHOD_SPECS: MethodSpec[] = [
     summary: 'A股全量行情(含五档)',
     mcpDesc: '获取 A 股 / 指数全量行情（腾讯）：最新价、涨跌幅、五档盘口、市值、PE/PB 等。',
     argShape: 'codes[]',
+    codesDesc:
+      'A 股代码数组，带不带 sh/sz/bj 前缀均可（如 600036 / sh600519）；指数需带前缀（如 sh000001）',
   },
   {
     path: ['quotes', 'cnSimple'],
@@ -468,6 +470,8 @@ export const METHOD_SPECS: MethodSpec[] = [
     summary: 'A股简要行情',
     mcpDesc: '获取 A 股 / 指数简要行情（价格、涨跌幅、成交量额）。',
     argShape: 'codes[]',
+    codesDesc:
+      'A 股代码数组，带不带 sh/sz/bj 前缀均可（如 600036 / sh600519）；指数需带前缀（如 sh000001）',
   },
   {
     path: ['quotes', 'hk'],
@@ -476,6 +480,8 @@ export const METHOD_SPECS: MethodSpec[] = [
     summary: '港股行情',
     mcpDesc: '获取港股行情。代码 5 位数字，带不带 hk 前缀均可（如 00700 / hk00700）。',
     argShape: 'codes[]',
+    codesDesc:
+      '港股代码数组，带不带 hk 前缀均可（如 00700 / hk00700）',
   },
   {
     path: ['quotes', 'us'],
@@ -484,6 +490,8 @@ export const METHOD_SPECS: MethodSpec[] = [
     summary: '美股行情',
     mcpDesc: '获取美股行情。代码如 AAPL / BABA。',
     argShape: 'codes[]',
+    codesDesc:
+      '美股代码数组，带不带 us 前缀均可（如 AAPL / usAAPL）',
   },
   {
     path: ['quotes', 'fund'],
@@ -500,6 +508,8 @@ export const METHOD_SPECS: MethodSpec[] = [
     summary: '资金流向(简版)',
     mcpDesc: '获取资金流向（简版，按代码批量）。',
     argShape: 'codes[]',
+    codesDesc:
+      'A 股代码数组，带不带 sh/sz/bj 前缀均可（如 600036 / sz000858）',
   },
   {
     path: ['quotes', 'largeOrder'],
@@ -507,6 +517,8 @@ export const METHOD_SPECS: MethodSpec[] = [
     summary: '盘口大单占比',
     mcpDesc: '获取盘口大单占比。',
     argShape: 'codes[]',
+    codesDesc:
+      'A 股代码数组，带不带 sh/sz/bj 前缀均可（如 600036 / sz000858）',
   },
   {
     path: ['quotes', 'timeline'],
