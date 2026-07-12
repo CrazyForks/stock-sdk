@@ -43,4 +43,4 @@ The same tool manifest drives both MCP's `tools/list` / `tools/call` and the CLI
 ## Next steps
 
 - [MCP Installation](/en/mcp/installation): connect from your AI client.
-- [AI Skills](/en/mcp/skills): compose these tools into higher-level analysis skills.
+- [AI Skills](/en/skills/): compose these tools into higher-level analysis skills.

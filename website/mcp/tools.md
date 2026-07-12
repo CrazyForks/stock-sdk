@@ -43,4 +43,4 @@
 ## 下一步
 
 - [MCP 安装配置](/mcp/installation)：在各 AI 客户端接入。
-- [AI Skills](/mcp/skills)：把这些工具组合成更高层的分析技能。
+- [AI Skills](/skills/)：把这些工具组合成更高层的分析技能。

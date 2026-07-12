@@ -122,7 +122,17 @@ const zhMcpSidebar = {
         { text: '概述', link: '/mcp/' },
         { text: '安装配置', link: '/mcp/installation' },
         { text: '工具', link: '/mcp/tools' },
-        { text: 'AI Skills', link: '/mcp/skills' },
+      ],
+    },
+  ],
+}
+const zhSkillsSidebar = {
+  '/skills/': [
+    {
+      text: 'AI Skills',
+      items: [
+        { text: '概述', link: '/skills/' },
+        { text: '技能清单', link: '/skills/catalog' },
       ],
     },
   ],
@@ -237,7 +247,17 @@ const enMcpSidebar = {
         { text: 'Overview', link: '/en/mcp/' },
         { text: 'Installation', link: '/en/mcp/installation' },
         { text: 'Tools', link: '/en/mcp/tools' },
-        { text: 'AI Skills', link: '/en/mcp/skills' },
+      ],
+    },
+  ],
+}
+const enSkillsSidebar = {
+  '/en/skills/': [
+    {
+      text: 'AI Skills',
+      items: [
+        { text: 'Overview', link: '/en/skills/' },
+        { text: 'Skill Catalog', link: '/en/skills/catalog' },
       ],
     },
   ],
@@ -280,8 +300,15 @@ export default defineConfig({
         nav: [
           { text: '指南', link: '/guide/getting-started' },
           { text: 'API', link: '/api/' },
-          { text: 'CLI', link: '/cli/' },
-          { text: 'MCP · AI', link: '/mcp/' },
+          {
+            text: 'AI · Extensions',
+            activeMatch: '^/(cli|mcp|skills)/',
+            items: [
+              { text: 'CLI', link: '/cli/' },
+              { text: 'MCP', link: '/mcp/' },
+              { text: 'Skills', link: '/skills/' },
+            ],
+          },
           { text: '演练场', link: '/playground/' },
           // 版本下拉：导航展示 latest 版本号，hover 出更新日志与 v1 文档外链
           {
@@ -302,6 +329,7 @@ export default defineConfig({
           ...zhApiSidebar,
           ...zhCliSidebar,
           ...zhMcpSidebar,
+          ...zhSkillsSidebar,
         },
         outline: { level: [2, 3], label: '页面导航' },
         docFooter: { prev: '上一页', next: '下一页' },
@@ -318,8 +346,15 @@ export default defineConfig({
         nav: [
           { text: 'Guide', link: '/en/guide/getting-started' },
           { text: 'API', link: '/en/api/' },
-          { text: 'CLI', link: '/en/cli/' },
-          { text: 'MCP · AI', link: '/en/mcp/' },
+          {
+            text: 'AI · Extensions',
+            activeMatch: '^/en/(cli|mcp|skills)/',
+            items: [
+              { text: 'CLI', link: '/en/cli/' },
+              { text: 'MCP', link: '/en/mcp/' },
+              { text: 'Skills', link: '/en/skills/' },
+            ],
+          },
           { text: 'Playground', link: '/en/playground/' },
           {
             text: `v${sdkVersion}`,
@@ -339,6 +374,7 @@ export default defineConfig({
           ...enApiSidebar,
           ...enCliSidebar,
           ...enMcpSidebar,
+          ...enSkillsSidebar,
         },
         outline: { level: [2, 3], label: 'On this page' },
         docFooter: { prev: 'Previous', next: 'Next' },

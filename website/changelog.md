@@ -46,7 +46,7 @@ pageClass: changelog-page
 - `tryToTencentSymbols(codes, market)`（`stock-sdk/symbols`）：行情键批量容错归一，返回 `{ keys, invalid }`。
 - `DatacenterQuery.concurrency`：datacenter 翻页并发波次大小。
 - **大宗交易 / 融资融券 5 个 MCP 工具**：`get_block_trade_market_stat` / `_detail` / `_daily_stat` / `get_margin_account_info` / `_target_list`。
-- **MCP Skills（Prompts）——7 个场景化分析技能**：server 实现 `prompts/list` + `prompts/get`，core 4 + full 3，`STOCK_SDK_MCP_PROMPTS` 控范围，全程只读。见 [AI Skills](/mcp/skills)。
+- **MCP Skills（Prompts）——7 个场景化分析技能**：server 实现 `prompts/list` + `prompts/get`，core 4 + full 3，`STOCK_SDK_MCP_PROMPTS` 控范围，全程只读。见 [AI Skills](/skills/)。
 - **`get_kline_signals` + `sdk.kline.signals(symbol, options)`**：识别 14 类技术信号（金叉死叉 / 超买超卖 / BOLL 突破 / SAR 反转），`maFast` / `maSlow` 可调。
 - **spec ↔ SDK 全量 contract 测试（R7-15）**：方法路径与 MCP options 键机械钉住；技能侧新增 `prompts-contract`。
 

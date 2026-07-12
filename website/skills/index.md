@@ -1,4 +1,4 @@
-# AI Skills（MCP Prompts）
+# AI Skills 概述
 
 MCP 工具是「原子能力」——单次取一类数据，由模型按需自动调用。**Skills** 则是面向场景的高层技能：把「调哪些工具、怎么算、怎么归纳」编排成一段专家写好的模板，通过 MCP 协议的 **Prompts** 能力暴露，让用户在客户端里一键触发一条完整分析链路。
 
@@ -19,32 +19,14 @@ Skills 落地为真正的 MCP Prompts（`prompts/list` + `prompts/get`），serv
 
 所以 Skill 的价值不在「解锁能力」，而在**标准化编排 + 降低模型漏调/错调 + 给非专家用户一键入口 + 统一免责与安全纪律**。
 
-## 内置技能（7 个）
+## 内置了哪些技能
 
-技能分 `core`（默认启用）与 `full`（需 `STOCK_SDK_MCP_PROMPTS=full` 或点名）两级，与工具集的 core/full 独立过滤。
+分 `core`（默认 4 个）与 `full`（进阶 3 个）两级，与工具集独立过滤：
 
-### Core（默认 4 个）
+- **core**：`analyze_stock` 个股技术分析、`screen_stocks` 智能选股、`market_overview` 市场概览、`monitor_watchlist` 自选监控
+- **full**：`analyze_capital_flow` 资金面、`analyze_fund` 基金分析、`diagnose_stock` 综合诊断
 
-| 技能 | 参数 | 底层工具 | 做什么 |
-|---|---|---|---|
-| `analyze_stock` | `symbol`(必填)、`period`(默认 daily) | `search` / `get_kline_with_indicators` / `get_kline_signals` | 个股完整技术面分析：K 线 + 指标 + 信号 + 归纳 |
-| `screen_stocks` | `criteria`(必填)、`scope`(默认全市场) | 板块成分 / `get_fund_flow_rank` / `get_a_share_quotes` / 指标 / 信号 | 智能选股：先粗筛再对候选取指标，给排序候选清单 |
-| `market_overview` | 无 | `get_market_status` / `get_zt_pool` / `get_northbound_flow_summary` / `get_fund_flow_rank` | 今日市场速览：状态 + 涨停广度 + 北向 + 主力资金方向 |
-| `monitor_watchlist` | `symbols`(必填，逗号分隔) | `get_a_share_quotes` / `get_today_timeline` / `get_individual_fund_flow` / `get_kline_signals` | 自选单次快照：批量行情 + 对触发阈值的标的下钻 |
-
-示例：
-
-> 帮我分析一下贵州茅台（sh600519）最近的技术形态，有没有金叉信号？
-
-### Full（进阶 3 个）
-
-| 技能 | 参数 | 底层工具 | 做什么 |
-|---|---|---|---|
-| `analyze_capital_flow` | `symbol`(可选) | 个股/大盘资金流 / 龙虎榜 + 席位 / 大宗 / 两融 / 北向 | 主力动向研判：多资金源交叉验证吸筹 vs 派发 |
-| `analyze_fund` | `fundCode`(必填，6 位) | `get_fund_profile` / `get_fund_nav_history` / `get_fund_rank_history` / `get_fund_estimate` | 基金综合评估：档案 + 净值走势 + 同类排名 + 当日估值 |
-| `diagnose_stock` | `symbol`(必填) | 指标 + 信号 / 资金流 / 龙虎榜统计 / 筹码分布 | 个股综合诊断：技术 + 资金 + 筹码三维打分 |
-
-> `analyze_capital_flow` 正好用上大宗交易 / 融资融券工具，是它们最自然的消费场景。
+每个技能的参数、底层工具与提问示例见 **[技能清单](/skills/catalog)**。
 
 ## 启用与触发
 
@@ -80,6 +62,7 @@ Skills 落地为真正的 MCP Prompts（`prompts/list` + `prompts/get`），serv
 
 ## 下一步
 
+- [技能清单](/skills/catalog)：7 个技能的参数、底层工具与示例。
 - [MCP 概述](/mcp/)：协议与零依赖实现。
 - [MCP 工具表](/mcp/tools)：技能底层用到的原子工具（含 `get_kline_signals` 信号工具）。
 - [技术指标](/guide/indicators)：指标与信号层的计算能力。

@@ -155,7 +155,7 @@ Wire it into Cursor / Claude Desktop / Codex / Gemini, etc. (`mcpServers` config
 
 `STOCK_SDK_MCP_TOOLS=core|full|<comma-separated tool names>` controls the tool set (default `core`).
 
-Beyond tools, it ships **7 scenario AI Skills** (MCP Prompts — e.g. `analyze_stock` / `screen_stocks` / `diagnose_stock`) that Prompts-aware clients can trigger in one click; `STOCK_SDK_MCP_PROMPTS=core|full|<list>` controls the skill set (default `core`). See the [AI Skills docs](https://stock-sdk.linkdiary.cn/mcp/skills).
+Beyond tools, it ships **7 scenario AI Skills** (MCP Prompts — e.g. `analyze_stock` / `screen_stocks` / `diagnose_stock`) that Prompts-aware clients can trigger in one click; `STOCK_SDK_MCP_PROMPTS=core|full|<list>` controls the skill set (default `core`). See the [AI Skills docs](https://stock-sdk.linkdiary.cn/en/skills/).
 
 👉 [Full MCP docs](https://stock-sdk.linkdiary.cn/en/mcp/)
 

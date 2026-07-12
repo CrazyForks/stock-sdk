@@ -46,7 +46,7 @@ This release lands the Top-15 fixes from the 2026-07 whole-project review (R7-1 
 - `tryToTencentSymbols(codes, market)` (`stock-sdk/symbols`): batch fault-tolerant normalization to Tencent quote keys.
 - `DatacenterQuery.concurrency`: wave size for datacenter pagination.
 - **5 MCP tools for block trades / margin trading**: `get_block_trade_market_stat` / `_detail` / `_daily_stat` / `get_margin_account_info` / `_target_list`.
-- **MCP Skills (Prompts) — 7 scenario analysis skills**: the server implements `prompts/list` + `prompts/get`; core 4 + full 3, scoped by `STOCK_SDK_MCP_PROMPTS`, read-only. See [AI Skills](/en/mcp/skills).
+- **MCP Skills (Prompts) — 7 scenario analysis skills**: the server implements `prompts/list` + `prompts/get`; core 4 + full 3, scoped by `STOCK_SDK_MCP_PROMPTS`, read-only. See [AI Skills](/en/skills/).
 - **`get_kline_signals` + `sdk.kline.signals(symbol, options)`**: detects 14 technical signals (golden/death crosses, overbought/oversold, BOLL breakouts, SAR reversals); `maFast` / `maSlow` tunable.
 - **Full spec ↔ SDK contract tests (R7-15)**: method paths and MCP options keys are mechanically pinned; a `prompts-contract` was added for skills.
 

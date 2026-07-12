@@ -155,7 +155,7 @@ npx stock-sdk mcp
 
 环境变量 `STOCK_SDK_MCP_TOOLS=core|full|<逗号分隔工具名>` 控制工具集范围（默认 `core`）。
 
-除工具外还内置 **7 个场景化 AI Skills**（MCP Prompts，如 `analyze_stock` / `screen_stocks` / `diagnose_stock`），支持的客户端可一键触发；`STOCK_SDK_MCP_PROMPTS=core|full|<名单>` 控制技能集（默认 `core`）。详见 [AI Skills 文档](https://stock-sdk.linkdiary.cn/mcp/skills)。
+除工具外还内置 **7 个场景化 AI Skills**（MCP Prompts，如 `analyze_stock` / `screen_stocks` / `diagnose_stock`），支持的客户端可一键触发；`STOCK_SDK_MCP_PROMPTS=core|full|<名单>` 控制技能集（默认 `core`）。详见 [AI Skills 文档](https://stock-sdk.linkdiary.cn/skills/)。
 
 👉 [完整 MCP 文档](https://stock-sdk.linkdiary.cn/mcp/)
 

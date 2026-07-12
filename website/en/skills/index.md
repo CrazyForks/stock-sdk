@@ -1,4 +1,4 @@
-# AI Skills (MCP Prompts)
+# AI Skills Overview
 
 MCP tools are "atomic capabilities" — each fetches one kind of data, called on demand by the model. **Skills** are scenario-oriented, higher-level capabilities: they package "which tools to call, how to compute, how to summarize" into an expert-authored template, exposed through the MCP **Prompts** capability so a user can trigger a whole analysis pipeline with one click.
 
@@ -19,32 +19,14 @@ A full `analyze_stock` interaction:
 
 So a skill's value isn't "unlocking capability" — it's **standardized orchestration + fewer missed/mis-called tools + a one-click entry for non-experts + a uniform disclaimer and safety discipline**.
 
-## Built-in skills (7)
+## Which skills are built in
 
-Skills are split into `core` (on by default) and `full` (needs `STOCK_SDK_MCP_PROMPTS=full` or an explicit list), filtered independently from the tool tier.
+Two tiers, `core` (4 by default) and `full` (3 advanced), filtered independently from tools:
 
-### Core (4 by default)
+- **core**: `analyze_stock` (technical), `screen_stocks` (screening), `market_overview`, `monitor_watchlist`
+- **full**: `analyze_capital_flow`, `analyze_fund`, `diagnose_stock`
 
-| Skill | Arguments | Underlying tools | What it does |
-|---|---|---|---|
-| `analyze_stock` | `symbol` (required), `period` (default daily) | `search` / `get_kline_with_indicators` / `get_kline_signals` | Full single-symbol technical analysis: klines + indicators + signals, summarized |
-| `screen_stocks` | `criteria` (required), `scope` (default whole market) | board constituents / `get_fund_flow_rank` / `get_a_share_quotes` / indicators / signals | Screening: coarse-filter first, then indicators on candidates; ranked shortlist |
-| `market_overview` | none | `get_market_status` / `get_zt_pool` / `get_northbound_flow_summary` / `get_fund_flow_rank` | Today's brief: status + limit-up breadth + northbound + main-force direction |
-| `monitor_watchlist` | `symbols` (required, comma-separated) | `get_a_share_quotes` / `get_today_timeline` / `get_individual_fund_flow` / `get_kline_signals` | Single-shot watchlist check: batch quotes, drill into threshold-crossers |
-
-Example:
-
-> Analyze the recent technical setup for Kweichow Moutai (sh600519) — any golden-cross signal?
-
-### Full (3 advanced)
-
-| Skill | Arguments | Underlying tools | What it does |
-|---|---|---|---|
-| `analyze_capital_flow` | `symbol` (optional) | per-stock/market fund flow / dragon-tiger + seats / block trades / margin / northbound | Smart-money read: cross-confirm accumulation vs. distribution across sources |
-| `analyze_fund` | `fundCode` (required, 6-digit) | `get_fund_profile` / `get_fund_nav_history` / `get_fund_rank_history` / `get_fund_estimate` | Fund review: profile + NAV history + category ranking + intraday estimate |
-| `diagnose_stock` | `symbol` (required) | indicators + signals / fund flow / dragon-tiger stats / chip distribution | Multi-factor diagnosis: technical + capital + chips, scored |
-
-> `analyze_capital_flow` is the natural consumer of the block-trade / margin tools.
+Each skill's arguments, underlying tools and example prompts are in the **[Skill Catalog](/en/skills/catalog)**.
 
 ## Enable & trigger
 
@@ -80,6 +62,7 @@ Every skill sits on **read-only** tools, and each template ends with an explicit
 
 ## Next steps
 
+- [Skill Catalog](/en/skills/catalog): the 7 skills with arguments, underlying tools and examples.
 - [MCP Overview](/en/mcp/): protocol and zero-dependency implementation.
 - [MCP Tool Table](/en/mcp/tools): the atomic tools skills build on (incl. the `get_kline_signals` tool).
 - [Technical Indicators](/en/guide/indicators): the indicator and signal computation layer.
