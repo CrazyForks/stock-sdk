@@ -15,6 +15,12 @@ export interface SpecialIndexInfo {
   secidPrefix?: string;
   /** 规范化(大写)后的指数代码,调用方应以此为准而非原始输入 */
   code: string;
+  /**
+   * 东财 secid 的 code 部分(默认取 code)。美股指数东财码 ≠ 规范码
+   * (DJI→DJIA / INX→SPX / IXIC→NDX):规范码对齐腾讯与用户习惯,secid 用本字段。
+   * 注意东财码可能撞真实 ticker(DJIA 是 Global X ETF),故仅内部用、不做用户别名。
+   */
+  eastmoneyCode?: string;
   /** 腾讯行情码(如 'hkHSI');缺省表示腾讯无该指数行情(仅东财可用,如 HSHCI) */
   tencent?: string;
   /**
@@ -41,6 +47,23 @@ const NAMED_INDICES: Record<string, Omit<SpecialIndexInfo, 'code'>> = {
   HSCEI: { market: 'HK', exchange: 'HSI', secidPrefix: '100', tencent: 'hkHSCEI', collision: true },
   /** 恒生科技指数(Hang Seng TECH;东财 secid 暂未确认,当前仅腾讯行情可用) */
   HSTECH: { market: 'HK', exchange: 'HSI', tencent: 'hkHSTECH', collision: true },
+  // 美股三大指数:规范码取腾讯码(碰撞安全,usDJI/usINX/usIXIC 皆为指数),
+  // 东财码另存 eastmoneyCode(DJIA/SPX/NDX,其中 DJIA 撞真实 ETF,故不做用户别名)。
+  /** 道琼斯工业平均指数(腾讯 usDJI / 东财 100.DJIA) */
+  DJI: {
+    market: 'US', exchange: 'US', secidPrefix: '100',
+    eastmoneyCode: 'DJIA', tencent: 'usDJI', collision: true,
+  },
+  /** 标普 500 指数(腾讯 usINX / 东财 100.SPX) */
+  INX: {
+    market: 'US', exchange: 'US', secidPrefix: '100',
+    eastmoneyCode: 'SPX', tencent: 'usINX', collision: true,
+  },
+  /** 纳斯达克指数(腾讯 usIXIC / 东财 100.NDX) */
+  IXIC: {
+    market: 'US', exchange: 'US', secidPrefix: '100',
+    eastmoneyCode: 'NDX', tencent: 'usIXIC', collision: true,
+  },
   /** 德国 DAX 指数 */
   GDAXI: { market: 'GLOBAL', exchange: 'DAX', secidPrefix: '100' },
 };

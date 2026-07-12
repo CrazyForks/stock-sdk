@@ -182,6 +182,27 @@ describe('normalizeSymbol — 特殊指数(specialIndex 注册表)', () => {
     });
   });
 
+  it('美股指数(DJI/INX/IXIC):{market:US} 按指数解析;裸码与 DJIA-ETF 不被劫持', () => {
+    for (const code of ['DJI', 'INX', 'IXIC'] as const) {
+      expect(normalizeSymbol(code, { market: 'US' })).toMatchObject({
+        market: 'US',
+        assetType: 'index',
+        code,
+      });
+    }
+    // 向后兼容:裸码仍归美股 stock 命名空间
+    expect(normalizeSymbol('DJI')).toMatchObject({
+      market: 'US',
+      assetType: 'stock',
+    });
+    // 碰撞安全:DJIA 是真实 ETF(Global X),即便带 {market:'US'} 也不得劫持成道琼斯指数
+    expect(normalizeSymbol('DJIA', { market: 'US' })).toMatchObject({
+      market: 'US',
+      assetType: 'stock',
+      code: 'DJIA',
+    });
+  });
+
   it('交易所前缀/后缀断言与特殊指数码形矛盾:与 hint 轴同口径抛错,不拼死 secid', () => {
     expect(() => normalizeSymbol('sh930955')).toThrow(InvalidSymbolError);
     expect(() => normalizeSymbol('930955.SH')).toThrow(InvalidSymbolError);

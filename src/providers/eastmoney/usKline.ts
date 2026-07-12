@@ -15,7 +15,11 @@ import type {
   USMinuteKline,
   USMinuteTimeline,
 } from '../../types';
-import { normalizeSymbol, EXCHANGE_TO_SECID_PREFIX } from '../../symbols';
+import {
+  normalizeSymbol,
+  toEastmoneySecid,
+  EXCHANGE_TO_SECID_PREFIX,
+} from '../../symbols';
 import { getUSCodeList } from '../tencent/batch';
 import { fetchEmHistoryKline } from './utils';
 import {
@@ -84,7 +88,13 @@ async function resolveUsSecid(
   if (/^\d{2,3}\./.test(symbol)) {
     return symbol;
   }
-  const ticker = normalizeSymbol(symbol, { market: 'US' }).code;
+  const ns = normalizeSymbol(symbol, { market: 'US' });
+  // 美股指数(DJI→100.DJIA / INX→100.SPX / IXIC→100.NDX):直接用 secid，
+  // 不走 105/106/107 股票市场探测（指数不在股票市场，探测必然全空 → 误报不存在）。
+  if (ns.assetType === 'index') {
+    return toEastmoneySecid(ns);
+  }
+  const ticker = ns.code;
   const cache = usSecidCache(client);
   const hit = cache.get(ticker);
   if (hit === US_SECID_NOT_FOUND) {

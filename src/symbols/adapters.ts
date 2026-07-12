@@ -105,7 +105,7 @@ export function toEastmoneySecid(ns: NormalizedSymbol): string {
   if (ns.assetType === 'index') {
     const specialIdx = lookupSpecialIndex(ns.code);
     if (specialIdx?.secidPrefix && specialIdx.exchange === ns.exchange) {
-      return `${specialIdx.secidPrefix}.${specialIdx.code}`;
+      return `${specialIdx.secidPrefix}.${specialIdx.eastmoneyCode ?? specialIdx.code}`;
     }
   }
   if (ns.market === 'HK') {

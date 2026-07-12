@@ -40,6 +40,17 @@ describe('toTencentSymbol', () => {
       expected
     );
   });
+
+  // 美股指数规范码 → 腾讯行情键（kline.us/quotes.us 一码通用的腾讯侧）
+  it.each([
+    ['DJI', 'usDJI'],
+    ['INX', 'usINX'],
+    ['IXIC', 'usIXIC'],
+  ])('美股指数 %s @US → %s', (input, expected) => {
+    expect(toTencentSymbol(normalizeSymbol(input, { market: 'US' }))).toBe(
+      expected
+    );
+  });
 });
 
 describe('toEastmoneySecid', () => {
@@ -89,6 +100,18 @@ describe('toEastmoneySecid', () => {
     );
     expect(toEastmoneySecid(normalizeSymbol('HSTECH', { market: 'HK' }))).toBe(
       '116.HSTECH'
+    );
+  });
+
+  it('美股指数东财 secid:规范码 DJI/INX/IXIC → 东财码 100.DJIA/100.SPX/100.NDX', () => {
+    expect(toEastmoneySecid(normalizeSymbol('DJI', { market: 'US' }))).toBe(
+      '100.DJIA'
+    );
+    expect(toEastmoneySecid(normalizeSymbol('INX', { market: 'US' }))).toBe(
+      '100.SPX'
+    );
+    expect(toEastmoneySecid(normalizeSymbol('IXIC', { market: 'US' }))).toBe(
+      '100.NDX'
     );
   });
 });
