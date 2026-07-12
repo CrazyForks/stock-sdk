@@ -14,11 +14,18 @@ import { getUSHistoryKline } from '../../../../src/providers/eastmoney/usKline';
 interface FakeRoute {
   /** us 代码表响应的 list 字段；设为 'THROW' 让代码表请求失败（模拟软限流/网络） */
   codeList: string[] | 'THROW';
-  /** secid → 该 secid 的 kline 行（探测与正式请求同一路由） */
+  /** secid → 该 secid 的正式请求（lmt≠1）kline 行；缺失为空窗口 */
   klines: Record<string, string[]>;
+  /**
+   * 探测请求（lmt=1）能命中的 secid 列表——用于模拟"探测存在、但正式窗口为空"
+   * （周末/盘前/超出保留期）。缺省时探测按 klines 判定（探测与正式同源）。
+   */
+  probeHit?: string[];
   /** 每个 get 的人为延迟（ms），用于并发 single-flight 测试 */
   delayMs?: number;
 }
+
+const ONE_BAR = ['2024-01-02,1,1,1,1,1,1,1,1,1,1'];
 
 /** fake client：按 URL 区分代码表请求与 kline 请求，记录全部调用。 */
 function fakeClient(route: FakeRoute) {
@@ -29,8 +36,18 @@ function fakeClient(route: FakeRoute) {
       await new Promise((r) => setTimeout(r, route.delayMs));
     }
     if (url.includes('/api/qt/stock/kline')) {
-      const secid = new URL(url).searchParams.get('secid') ?? '';
-      return { data: { klines: route.klines[secid] ?? [], code: secid.split('.')[1], name: '' } };
+      const u = new URL(url);
+      const secid = u.searchParams.get('secid') ?? '';
+      const isProbe = u.searchParams.get('lmt') === '1';
+      // 探测（lmt=1）判存在性；正式请求（lmt 大）返回窗口数据。route.probeHit
+      // 指定时二者可分离（探测命中但正式空 = 空窗口查询）。
+      const klines =
+        isProbe && route.probeHit
+          ? route.probeHit.includes(secid)
+            ? ONE_BAR
+            : []
+          : route.klines[secid] ?? [];
+      return { data: { klines, code: secid.split('.')[1], name: '' } };
     }
     // 美股代码表（tencent fetchJsonCodeList 路径）
     if (route.codeList === 'THROW') {
@@ -104,15 +121,24 @@ describe('resolveUsSecid（经 getUSHistoryKline 端到端）', () => {
     expect(calls.length).toBe(before); // 负缓存命中：零新增请求
   });
 
-  it('空结果不触发自愈：缓存命中的 ticker 空查询不再重新探测（周末/盘前常态）', async () => {
-    const { client, calls } = fakeClient({ codeList: ['105.AAPL'], klines: {} });
-    await getUSHistoryKline(client, 'AAPL'); // 首次：代码表解析 + 正式请求（空）
+  it('空结果不触发自愈：探测解析的 ticker 空窗口查询不删缓存不重探测（周末/盘前常态）', async () => {
+    // 关键：用【探测解析】的 ticker（不在代码表，靠 106 探测命中），正式窗口空。
+    // - 无自愈（现状）：第二次缓存命中 106.NEWIPO → 正式空 → 0 探测
+    // - 有自愈（旧 withUsSecid）：第二次空结果 → 删缓存 → 重解析 → 重新探测
+    //   105/106 → probeUrls 非空 → 本用例失败。用代码表解析的 ticker（如 AAPL）
+    //   测不出差异（重解析命中代码表缓存、同 secid、同样 0 探测——vacuous pin）。
+    const { client, calls } = fakeClient({
+      codeList: ['105.AAPL'], // NEWIPO 不在代码表 → 走探测
+      probeHit: ['106.NEWIPO'], // 106 探测命中
+      klines: {}, // 正式窗口空
+    });
+    await getUSHistoryKline(client, 'NEWIPO'); // 首次：探测 105空/106命中 + 正式空
     const before = calls.length;
-    await getUSHistoryKline(client, 'AAPL'); // 缓存命中 → 空 → 直接返回，不删缓存不重探测
+    const result = await getUSHistoryKline(client, 'NEWIPO'); // 缓存命中 → 正式空
+    expect(result).toEqual([]);
     const after = calls.slice(before);
-    // 仅一次正式请求（lmt=1000000），零探测（lmt=1）
-    expect(klineUrls(after).map(secidOf)).toEqual(['105.AAPL']);
-    expect(probeUrls(after)).toHaveLength(0);
+    expect(probeUrls(after)).toHaveLength(0); // 零探测（有自愈会重探测 → 失败）
+    expect(klineUrls(after).map(secidOf)).toEqual(['106.NEWIPO']); // 只一次正式请求
   });
 
   it('代码表失败 + 探测全空：抛 NotFoundError 但【不】负缓存（软限流不误判为不存在）', async () => {
